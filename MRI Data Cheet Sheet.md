@@ -1,6 +1,6 @@
 # Cheet Sheet for using surface and volumetric neuroimaging data
 
-This includes broad descriptions of the most commonly used file types Nifti, Cifti and Gifti, usage of some python libraries (mostly nibabel, nilearn), the connectome workbench, FSL and rarely freesurfer and AFNI.
+This includes broad descriptions of the most commonly used file types Nifti, Cifti and Gifti, usage of some python libraries (mostly nibabel, nilearn), the connectome workbench (mostly for data from the human connectome project (HCP)), FSL and rarely freesurfer and AFNI.
 
 ## Nifti
 
@@ -90,7 +90,7 @@ There is multiple ways for doing so:
 * a confusing way is given on the [freesurfer website](https://surfer.nmr.mgh.harvard.edu/fswiki/CoordinateSystems)
 
 
-## HCP: Native T1 (Strutural Scan) aligned data to surface data
+## HCP: "Native T1 (strutural scan)"-aligned data to surface data
 
 
 ```shell
