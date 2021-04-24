@@ -82,15 +82,17 @@ centroid_round = [np.round(np.mean(idx[:,x])) for x in range(0,3)]
 ```
 
 
-## Conversion of volumetric data (in MNI) to surface data in fsaverage space
+### Conversion of volumetric data (in MNI) to surface data in fsaverage space
 
 There is multiple ways for doing so:
 * there is a paper describing a good way to do it by [Wu et al., 2018 in Neuroimage](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6239990/)
 * there is a [python library "regfusion"](https://pypi.org/project/regfusion/) with detailed usecase descriptions. This implements the Wu et al., 2018 mapping.
 * a confusing way is given on the [freesurfer website](https://surfer.nmr.mgh.harvard.edu/fswiki/CoordinateSystems)
 
+This results in either (a) cifti or gifti file(s).
 
-## HCP: "Native T1 (strutural scan)"-aligned data to surface data
+
+### HCP: "Native T1 (strutural scan)"-aligned data to surface data
 
 
 ```shell
@@ -137,8 +139,46 @@ Cifties can contain multiple brain structures (in contrast to Gifties?). Yet the
 
 Internally these should look mostly similiar. For more info check out the [Layman’s guide to working with CIFTI files](https://mandymejia.com/2015/08/10/a-laymans-guide-to-working-with-cifti-files/) by Mandy Mejia. Or the [HCP FAQ on Cifti](https://wiki.humanconnectome.org/display/PublicData/HCP+Users+FAQ)
 
+This format I think was created for/by the Human connectome project (HCP; and hence examples may focus on it a bit more).
 
-### HCP: Load resting state run and extract left cortex data
+### Create a new Cifti (left cortex excluding medial wall)
+
+Each Cifti file needs an assocaited brain model (i.e. which areas are included in the cifti file, such as left hemisphere aka "LEFT_CORTEX", right hemisphere etc). This brain model we can take from an already existing file, such as the resting state run of an HCP subject:
+
+```python
+import nibabel as nib
+
+resting_state_run = "/data/hcp/sub-100307/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR_Atlas_hp2000_clean.dtseries.nii"
+img = nib.load(resting_state_run)
+
+# extract brain model from file
+# here we just take the left hemisphere. the brain models used in the HCP are special as they exclude the medial wall
+# which reduces the number of greyordinates per hemisphere from 32492 to 29696
+
+left_cortex_excluding_medial_wall = list(img.header.matrix._mims[1].brain_models)[0].vertex_indices._indices
+
+# create a dummy array for the greyvoxel data, and only set the vertices that are not part of the medial wall to 1
+mask = np.zeros((32492)); 
+np.put(mask, left_cortex_excluding_medial_wall, 1)
+
+# create a new brain model with only the left cortex exluding medial wall
+bm_left = nib.cifti2.BrainModelAxis.from_mask(mask, "LEFT_CORTEX")
+```
+
+Now we can finally create the actual image using this brain model. Multiple scalar images can be saved in a single cifti (i.e. curvature and cortical thickness, distrubution of different receptor types). Each of the scalar images needs a title:
+
+```python
+data = np.zeros((2, 29696)); # (n_scalars, n_vertices), for the current brainmodel n_vertices = 29696
+# fill in / manipulate image data ...
+
+dsnames = ["Curvature", "Thickness"];
+cimg = nib.Cifti2Image(data, nib.cifti2.Cifti2Header.from_axes((nib.cifti2.ScalarAxis(dsnames), bm_leftown)))
+
+# optionally save it to a file
+cimg.to_filename("path/to/new/file.dscalar.nii(.gz)");
+```
+
+### HCP: Load resting state run Cifti and extract left cortex data
 
 ```python
 resting_state_run = "/data/hcp/sub-100307/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR_Atlas_hp2000_clean.dtseries.nii"
@@ -191,47 +231,10 @@ The full HCP cifti greyordinate data composition looks like:
 
 This information was taken from a [script](https://github.com/NeuroanatomyAndConnectivity/hcp_corr) by [Şeyma Bayrak](https://github.com/sheyma).
 
-### Create a new Cifti (left cortex excluding medial wall)
 
-Each Cifti file needs an assocaited brain model (i.e. which areas are included in the cifti file, such as left hemisphere aka "LEFT_CORTEX", right hemisphere etc). This brain model we can take from an already existing file, such as the resting state run of an HCP subject:
+### get outline of a surface ROI
 
-```python
-import nibabel as nib
-
-resting_state_run = "/data/hcp/sub-100307/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR_Atlas_hp2000_clean.dtseries.nii"
-img = nib.load(resting_state_run)
-
-# extract brain model from file
-# here we just take the left hemisphere. the brain models used in the HCP are special as they exclude the medial wall
-# which reduces the number of greyordinates per hemisphere from 32492 to 29696
-
-left_cortex_excluding_medial_wall = list(img.header.matrix._mims[1].brain_models)[0].vertex_indices._indices
-
-# create a dummy array for the greyvoxel data, and only set the vertices that are not part of the medial wall to 1
-mask = np.zeros((32492)); 
-np.put(mask, left_cortex_excluding_medial_wall, 1)
-
-# create a new brain model with only the left cortex exluding medial wall
-bm_left = nib.cifti2.BrainModelAxis.from_mask(mask, "LEFT_CORTEX")
-```
-
-Now we can finally create the actual image using this brain model. Multiple scalar images can be saved in a single cifti (i.e. curvature and cortical thickness, distrubution of different receptor types). Each of the scalar images needs a title:
-
-```python
-data = np.zeros(()); # (n_scalars, n_vertices), for the current brainmodel n_vertices = 29696
-# fill in / manipulate image data ...
-
-dsnames = ["Curvature", "Thickness"];
-cimg = nib.Cifti2Image(data, nib.cifti2.Cifti2Header.from_axes((nib.cifti2.ScalarAxis(dsnames), bm_leftown)))
-
-# optionally save it to a file
-cimg.to_filename("path/to/new/file.dscalar.nii(.gz)");
-```
-
-
-## get outline of a surface ROI
-
-Dilate the original image (OI) to get (D). Erode original image to get (E). The output/outline image (OUT) equals then D-E. This requires the connectome workbench cli to be installed, and access to the sphere-ical surf.gii (containing postion and size of vertices in 3D) in the same surface space as the data (here: freesurfer_LR32k / fslr32k / 32k_fs_LR).
+Dilate the original image (OI) to get (D). Erode original image to get (E). The output/outline image (OUT) equals then D-E. This requires the connectome workbench cli to be installed, and access to the sphere-ical surf.gii (containing postion and size of vertices in 3D) in the same surface space as the data (here: freesurfer_LR32k / fslr32k / 32k_fs_LR). Gii/Gifti files are described in the next big section.
 
 ```shell
 
