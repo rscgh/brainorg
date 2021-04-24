@@ -172,10 +172,23 @@ data = np.zeros((2, 29696)); # (n_scalars, n_vertices), for the current brainmod
 # fill in / manipulate image data ...
 
 dsnames = ["Curvature", "Thickness"];
-cimg = nib.Cifti2Image(data, nib.cifti2.Cifti2Header.from_axes((nib.cifti2.ScalarAxis(dsnames), bm_leftown)))
+cimg = nib.Cifti2Image(data, nib.cifti2.Cifti2Header.from_axes((nib.cifti2.ScalarAxis(dsnames), bm_left)))
 
 # optionally save it to a file
 cimg.to_filename("path/to/new/file.dscalar.nii(.gz)");
+```
+
+### Create a new Cifti (left cortex, with medial wall, untested)
+
+```python
+# create a dummy array for the greyvoxel data for the left hemisphere in 32k space, all set to one 1
+mask = np.ones((32492));
+# create a new brain model with only the left cortex
+bm_left = nib.cifti2.BrainModelAxis.from_mask(mask, "LEFT_CORTEX")
+data = np.zeros((2, 32492)); # (n_scalars, n_vertices), for the current brainmodel n_vertices = 32492
+# fill in / manipulate image data ...
+dsnames = ["Curvature", "Thickness"];
+cimg = nib.Cifti2Image(data, nib.cifti2.Cifti2Header.from_axes((nib.cifti2.ScalarAxis(dsnames), bm_left)))
 ```
 
 ### HCP: Load resting state run Cifti and extract left cortex data
