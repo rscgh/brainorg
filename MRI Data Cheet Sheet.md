@@ -91,8 +91,7 @@ There is multiple ways for doing so:
 ## HCP: Native T1 (Strutural Scan) aligned data to surface data
 
 
-```
-shell
+```shell
 
 # OPTIONAL:
 # when the volumectric_data.nii.gz was created with FSLeyes, another step is required
@@ -139,7 +138,7 @@ Internally these should look mostly similiar. For more info check out the [Layma
 
 ### HCP: Load resting state run and extract left cortex data
 
-```
+```python
 resting_state_run = "/data/hcp/sub-100307/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR_Atlas_hp2000_clean.dtseries.nii"
 img = nib.load(resting_state_run)
 fullbrain_tseries = img.get_fdata();
@@ -157,7 +156,7 @@ This resting state run is aligned by default to the FS_LR32k space. That kinda m
 
 To get the resting state data for the LH only, simply do:
 
-```
+```python
 left_ctx_tseries = fullbrain_tseries[:, 0: 0+29696];
 ```
 
@@ -194,7 +193,7 @@ This information was taken from a [script](https://github.com/NeuroanatomyAndCon
 
 Each Cifti file needs an assocaited brain model (i.e. which areas are included in the cifti file, such as left hemisphere aka "LEFT_CORTEX", right hemisphere etc). This brain model we can take from an already existing file, such as the resting state run of an HCP subject:
 
-```
+```python
 import nibabel as nib
 
 resting_state_run = "/data/hcp/sub-100307/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR_Atlas_hp2000_clean.dtseries.nii"
@@ -216,7 +215,7 @@ bm_left = nib.cifti2.BrainModelAxis.from_mask(mask, "LEFT_CORTEX")
 
 Now we can finally create the actual image using this brain model. Multiple scalar images can be saved in a single cifti (i.e. curvature and cortical thickness, distrubution of different receptor types). Each of the scalar images needs a title:
 
-```
+```python
 data = np.zeros(()); # (n_scalars, n_vertices), for the current brainmodel n_vertices = 29696
 # fill in / manipulate image data ...
 
@@ -232,8 +231,7 @@ cimg.to_filename("path/to/new/file.dscalar.nii(.gz)");
 
 Dilate the original image (OI) to get (D). Erode original image to get (E). The output/outline image (OUT) equals then D-E. This requires the connectome workbench cli to be installed, and access to the sphere-ical surf.gii (containing postion and size of vertices in 3D) in the same surface space as the data (here: freesurfer_LR32k / fslr32k / 32k_fs_LR).
 
-```
-shell
+```shell
 
 # usage: wb_command -cifti-dilate <cifti-in> COLUMN <surface-distance> <volume-distance> <cifti-out> -left-surface /data/pt_02189/MARHCP/BrocaConn/atlases/HCP_S1200_Atlas_Z4_pkXDZ/S1200.L.sphere.32k_fs_LR.surf.gii"
 
@@ -246,7 +244,7 @@ wb_command -cifti-math "D-E" tmp921.LH29k_outline.dscalar.nii -var D tmp921.LH29
 
 ### Separate Cifti files into gifti:
 
-```
+```shell
 wb_command -cifti-separate Q1-Q6_RelatedParcellation210.L.CorticalAreas_dil_Colors.32k_fs_LR.dlabel.nii COLUMN -label CORTEX_LEFT Q1-Q6_RelatedParcellation210.L.CorticalAreas_dil_Colors.32k_fs_LR.label.gii
 
 wb_command -cifti-separate Q1-Q6_RelatedParcellation210.R.CorticalAreas_dil_Colors.32k_fs_LR.dlabel.nii COLUMN -label CORTEX_RIGHT Q1-Q6_RelatedParcellation210.R.CorticalAreas_dil_Colors.32k_fs_LR.label.gii
@@ -271,24 +269,24 @@ For more info, check the posts by [Emma Robinson on Gifti/HCP surface files](htt
 
 
 *From cifti to gifti (within FS_LR32k)* 
-```
+```shell
 wb_command -cifti-separate Q1-Q6_RelatedParcellation210.L.CorticalAreas_dil_Colors.32k_fs_LR.dlabel.nii COLUMN -label CORTEX_LEFT Q1-Q6_RelatedParcellation210.L.CorticalAreas_dil_Colors.32k_fs_LR.label.gii
 ```
 
 *From FS_LR32k gifti to fsaverage164 gifti*
-```
+```shell
 wb_command -label-resample Q1-Q6_RelatedParcellation210.L.CorticalAreas_dil_Colors.32k_fs_LR.label.gii L.sphere.32k_fs_LR.surf.gii fs_L-to-fs_LR_fsaverage.L_LR.spherical_std.164k_fs_L.surf.gii BARYCENTRIC left.fsaverage164.label.gii
 ```
 
 *From fsaverage164 gifti to fsaverage(164?) .annot-file*
-```
+```shell
 mris_convert --annot left.fsaverage164.label.gii fs_L-to-fs_LR_fsaverage.L_LR.spherical_std.164k_fs_L.surf.gii lh.HCP-MMP1.annot
 ```
 
 Last three examples taken from Kathryn Mills Figshare Post [HCP-MMP1.0 projected on fsaverage](https://figshare.com/articles/dataset/HCP-MMP1_0_projected_on_fsaverage/3498446).
 
 *From fsaverage .label to fsaverage gifti file*
-```
+```shell
 # uses Freesurfer mris_convert
 mris_convert fsaverage6-rh.label fsaverage6-rh.label.gii 
 ```
@@ -299,7 +297,7 @@ In the HCP data a parcellation is i.e. given for each subject under:
 `hcp-subjectname/MNINonLinear/fsaverage_LR32k/subjectname.L.aparc.32k_fs_LR.label.gii`
 (here the one in the FS_LR32k space is used)
 
-```
+```python
 import nibabel as nib
 
 nib.load(r"/data/hcp/hcp-subjectname/MNINonLinear/fsaverage_LR32k/subjectname.L.aparc.32k_fs_LR.label.gii")
