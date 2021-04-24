@@ -8,7 +8,3 @@ This repository contains different scripts that exemplify working with brain org
 
 Jupyter Notebook: [ipynb](abagen_extract_and_plot_gene_data.ipynb), [html](https://htmlpreview.github.io/?https://github.com/rscgh/brainorg/blob/main/html/abagen_extract_and_plot_gene_data.html)
 
-
-
-## Html version of jupyter notebooks
-* [abagen_extract_and_plot_gene_data.html](https://htmlpreview.github.io/?https://github.com/rscgh/brainorg/blob/main/html/abagen_extract_and_plot_gene_data.html)
