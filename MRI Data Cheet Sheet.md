@@ -45,7 +45,7 @@ else: # hdsohdr == 540
   new_image = nib.Nifti2Image(newdata, nimg.affine, header=nimg.header)
 ```
 
-### Get MNI coordinate for 
+### Get MNI coordinate for a specific voxel
 
 *Works only for nifti-images aligned with MNI space*: Apply the affine contained in the header:
 
