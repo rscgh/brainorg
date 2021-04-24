@@ -4,7 +4,7 @@ This repository contains different scripts that exemplify working with brain org
 
 ## MRI Data Cheet Sheet
 
-This <a href="https://github.com/rscgh/brainorg/blob/main/MRI%20Data%20Cheet%20Sheet.md">file </a> includes broad descriptions of the most commonly used file types Nifti, Cifti and Gifti, usage of some python libraries (mostly nibabel, nilearn), the connectome workbench (mostly for data from the human connectome project (HCP)), FSL and rarely freesurfer and AFNI.
+**<a href="https://github.com/rscgh/brainorg/blob/main/MRI%20Data%20Cheet%20Sheet.md">This file</a>** includes broad descriptions of the most commonly used file types Nifti, Cifti and Gifti, usage of some python libraries (mostly nibabel, nilearn), the connectome workbench (mostly for data from the human connectome project (HCP)), FSL and rarely freesurfer and AFNI.
          
 ## Plotting Allen Brain Atlas human gene expression data
 
