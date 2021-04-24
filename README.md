@@ -2,7 +2,7 @@
 
 This repository contains different scripts that exemplify working with brain organization or (potentially) try to replicate previous findings. [work in progress]
 
-## Plotting Allen Brain Atlas gene expression data
+## Plotting Allen Brain Atlas human gene expression data
 
 using the abagen python library & a surface atlas
 
