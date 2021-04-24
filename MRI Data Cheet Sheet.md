@@ -60,9 +60,11 @@ mni_coords = [np.int_(np.round(x)) for x in apply_affine(nimg.affine, point_xyz)
 print("Point: ", point_xyz, "has MNI coordinates: ", mni_coords);
 ```
 
-This could be theoretically reversed? Maybe with 
-`point_xyz = apply_affine(np.linalg.inv(nimg.affine), mni_coords)`
-but I havent tested this yet.
+This can be reverseed using: 
+```python
+point_xyz = apply_affine(np.linalg.inv(nimg.affine), mni_coords)
+```
+but better check again.
 
 ### Get centroid for an ROI
 
