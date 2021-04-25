@@ -108,7 +108,7 @@ This results in either (a) cifti or gifti file(s).
 # so use the fsl reorientation capability:
 ${FSLDIR}/bin/fslreorient2std volumetric_data_nativeT1algined_c.nii.gz volumetric_data_nativeT1algined_cro.nii.gz
 
-# Rigid Alignment with MNI (i.e. ration and resizing?)
+# Rigid Alignment with MNI (i.e. rotation and resizing?)
 applywarp --rel --interp=spline -i "volumetric_data_nativeT1algined_cro.nii.gz"  -r MNI152_T1_0.7mm.nii.gz --premat=/data/hcp/sub-subjectname/T1w/xfms/acpc.mat -o "volumetric_data_MNIacpc.nii.gz"
 
 # OPTIONAL:
