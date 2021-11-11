@@ -7,6 +7,7 @@ This makes mainly use of
 * the [connectome workbench](https://humanconnectome.org/software/connectome-workbench "connectome workbench") CLI ([wb_command function reference](https://humanconnectome.org/software/workbench-command "wb_command function reference")) and 
 * [FSL](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki "FSL") ([fslmaths commands](https://mandymejia.com/fsl-maths-commands/ "fslmaths commands"))
 
+For editing of this file, use i.e. [pandao MD editor](https://pandao.github.io/editor.md/)
 
 ## Nifti
 
@@ -516,3 +517,5 @@ https://mvpa.blogspot.com/2018/02/connectome-workbench-making-surface.html
 ***Unofficial*** Guide to the HCP surface file formats
 https://emmarobinson01.com/2016/02/10/unofficial-guide-to-the-hcp-surface-file-formats/
 An important thing to recognise first about the HCP surface file format is that it has two versions of the atlas space: 164k_FS_LR and 32k_FS_LR. These atlases are regularly spaced and represent a left-right symmetric atlas developed  by Washu U in [3]. FS stands for FreeSurfer, and indicates the atlas is related to the FreeSurfer atlas fsaverage.
+
+
