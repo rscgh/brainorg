@@ -2,6 +2,12 @@
 
 This includes broad descriptions of the most commonly used file types Nifti, Cifti and Gifti, usage of some python libraries (mostly nibabel, nilearn), the connectome workbench (mostly for data from the human connectome project (HCP)), FSL and rarely freesurfer and AFNI.
 
+This makes mainly use of 
+* python (specifically [Nilearn](https://nilearn.github.io/stable/index.html "Nilearn")/[Nibabel](https://nipy.org/nibabel/ "Nibabel")), 
+* the [connectome workbench](https://humanconnectome.org/software/connectome-workbench "connectome workbench") CLI ([wb_command function reference](https://humanconnectome.org/software/workbench-command "wb_command function reference")) and 
+* [FSL](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki "FSL") ([fslmaths commands](https://mandymejia.com/fsl-maths-commands/ "fslmaths commands"))
+
+
 ## Nifti
 
 Niftis are files that usually contain 3-dimensional volumetric data (except for when they are misused for surface data storage or when used as cifti files). Standard brain scan data. They also contain an affine matrix that describes how this data can be anchored into space (i.e. to align volumetric data of different granularity - or with some roation - with each other. They also have headers.
@@ -33,6 +39,9 @@ new_image = nib.Nifti1Image(newdata, nimg.affine, header=nimg.header)
 # with new header
 new_image = nib.Nifti1Image(newdata, nimg.affine)
 nib.to_filename("path/to/newfile.nii.gz");
+
+# alternative way to create new image of same class
+new_image = nimg.__class__(newdata, nimg.affine, header=nimg.header)
 
 ```
 
@@ -71,7 +80,6 @@ but better check again.
 I.e. all voxels belonging to an ROI have the value 5, then one can do:
 
 ```python
-
 data= nimg = nib.load("path/to/image.nii.gz").get_fdata()
 value=5
 idx = np.array(np.where( np.round(data) == value ) ).T
@@ -91,10 +99,23 @@ There is multiple ways for doing so:
 
 This results in either (a) cifti or gifti file(s).
 
+### MNI aligned volumetric NIFTI -> HCP FS_LR_32k
 
-### HCP: "Native T1 (strutural scan)"-aligned data to surface data
+```shell
 
+#wb_command -volume-to-surface-mapping <input> <map_target_surf> <output> [-method]
+wb_command -volume-to-surface-mapping juelich_cyto_MNI152_2009C_nA.nii.gz atlases\surf_fsLR\reference\HCP_S1200\S1200.L.pial_MSMAll.32k_fs_LR.surf.gii juelich_cyto_MNI152_2009C_nA.enc.32kfslr.L.func.gii -enclosing
 
+wb_command -volume-to-surface-mapping juelich_cyto_MNI152_2009C_nA.nii.gz atlases\surf_fsLR\reference\HCP_S1200\S1200.R.pial_MSMAll.32k_fs_LR.surf.gii juelich_cyto_MNI152_2009C_nA.enc.32kfslr.R.func.gii -enclosing
+
+# -enclosing does not average voxels, so can be used i.e. for transformation of atlases
+# - trilinear uses interpolation; -cubic & -ribbon-constrained are even more complicated
+
+```
+
+### HCP: Functional Image aligned to T1 (structural scan) in subject native volumetric space -> Subject specific FS_LR_32k
+
+"Native T1 (strutural scan)"-aligned data to surface data
 ```shell
 
 # OPTIONAL:
@@ -123,8 +144,6 @@ fslmaths volumetric_data_MNIacpc.nii.gz -thr 0.6 volumetric_data_MNIacpc_clean.n
 #-trilinear might be working better in some cases and seems to be faster
 
 wb_command -volume-to-surface-mapping volumetric_data_MNIacpc_clean.nii.gz /data/hcp/sub-subjectname/MNINonLinear/fsaverage_LR32k/sub-subjectname.L.pial.32k_fs_LR.surf.gii surface_data.enc.32kfslr.func.gii -enclosing
-
-
 ```
 
 
@@ -134,7 +153,7 @@ wb_command -volume-to-surface-mapping volumetric_data_MNIacpc_clean.nii.gz /data
 Cifties can contain multiple brain structures (in contrast to Gifties?). Yet they do not contain any information about where in 3D the greyordinates (vertices) are located in, this is only contained in surf.gii files)
 
 * .dscalar.nii(.gz), usually contains one to a hand full of scalar images, such as i.e. local cortical curvature and thickness, resulting in a shape of (2,91282) ~(n_scalars, n_vertices)
-* .dtseries.nii(.gz), usually contains a time series (such as resting state) with a shape like (1200, 91282), 1200 timepoints x 91282 svoxels7vertices; 
+* .dtseries.nii(.gz), usually contains a time series (such as resting state) with a shape like (1200, 91282), 1200 timepoints x 91282 svoxels/vertices; 
 * .dlabel.nii(.gz), contains a parcellation of shape (n_vertices) where the values correspond to a structure ID (i.e. id=4 could hypothetically correspond to the hippocampus). It should also somewhere contain the mapping from id (4) to label (hippocampus).
 
 Internally these should look mostly similiar. For more info check out the [Layman’s guide to working with CIFTI files](https://mandymejia.com/2015/08/10/a-laymans-guide-to-working-with-cifti-files/) by Mandy Mejia. Or the [HCP FAQ on Cifti](https://wiki.humanconnectome.org/display/PublicData/HCP+Users+FAQ)
@@ -245,7 +264,7 @@ The full HCP cifti greyordinate data composition looks like:
 This information was taken from a [script](https://github.com/NeuroanatomyAndConnectivity/hcp_corr) by [Şeyma Bayrak](https://github.com/sheyma).
 
 
-### get outline of a surface ROI
+### Get outline of a surface ROI
 
 Dilate the original image (OI) to get (D). Erode original image to get (E). The output/outline image (OUT) equals then D-E. This requires the connectome workbench cli to be installed, and access to the sphere-ical surf.gii (containing postion and size of vertices in 3D) in the same surface space as the data (here: freesurfer_LR32k / fslr32k / 32k_fs_LR). Gii/Gifti files are described in the next big section.
 
@@ -270,28 +289,44 @@ wb_command -cifti-separate Q1-Q6_RelatedParcellation210.R.CorticalAreas_dil_Colo
 
 This uses the [connectome workbench cli](). Example taken from Kathryn Mills Figshare Post [HCP-MMP1.0 projected on fsaverage](https://figshare.com/articles/dataset/HCP-MMP1_0_projected_on_fsaverage/3498446).
 
+### Combine Gifti into Cifti
 
+```shell
+# wb_command -cifti-create-label <output> [-part <part.gifti>]
+wb_command -cifti-create-label juelich_atlas_v29.maxprob.enc.32kfslr.LR.dlabel.nii -left-label juelich_atlas_v29.maxprob.enc.32kfslr.L.label.gii -right-label juelich_atlas_v29.enc.32kfslr.R.label.gii
 
+#works similiarly both labels and func: (R.label.gii, L.label.gii) -> (dlabel.nii) and (R.func.gii, L.func.gii) -> (dscalar.nii)
+wb_command -cifti-create-dense-scalar juelich_atlas_v29.maxprob.enc.32kfslr.LR.dscalar.nii -left-label juelich_atlas_v29.maxprob.enc.32kfslr.L.func.gii -right-label juelich_atlas_v29.enc.32kfslr.R.func.gii
 
+# ... and timeseries: -cifti-create-dense-timeseries
+```
 
 ## Gifti
 
 
 * `.surf.gii` files provide the 3D brain mesh/object backbone. Contains the mapping from greyordinate vertex to its location in 3D.
 * `shape.gii` or `func.gii` contain actual data, such as cortical thickness etc. (similiar to what can be contained in cifti files?)
+* `label.gii` contain integer data, indicating the parcel each vertex belongs to; + a mapping from these integer values to parcel labels
+
 
 For more info, check the posts by [Emma Robinson on Gifti/HCP surface files](https://emmarobinson01.com/2016/02/10/unofficial-guide-to-the-hcp-surface-file-formats/) and both posts by Joset (Jo) A. Etzel on [NIfTI, CIFTI, GIFTI in the HCP and Workbench](http://mvpa.blogspot.com/2014/03/nifti-cifti-gifti-in-hcp-and-workbench.html) and on [Conversion from Volumetric to Surface](https://mvpa.blogspot.com/2018/02/connectome-workbench-making-surface.html).
 
 
 ### Convert annoations between surface data types
 
+*From gifti to cifti (within FS_LR32k)* 
+```shell
+# use cifti-create functions: -cifti-create-dense-timeseries, -cifti-create-label
+# see also last sections of CIFTI (Separate Cifti files into gifti / Combine Gifti into Cifti)
+wb_command -cifti-create-dense-scalar juelich_atlas_v29.maxprob.enc.32kfslr.LR.dscalar.nii -left-label juelich_atlas_v29.maxprob.enc.32kfslr.L.func.gii -right-label juelich_atlas_v29.enc.32kfslr.R.func.gii
+```
 
 *From cifti to gifti (within FS_LR32k)* 
 ```shell
 wb_command -cifti-separate Q1-Q6_RelatedParcellation210.L.CorticalAreas_dil_Colors.32k_fs_LR.dlabel.nii COLUMN -label CORTEX_LEFT Q1-Q6_RelatedParcellation210.L.CorticalAreas_dil_Colors.32k_fs_LR.label.gii
 ```
 
-*From FS_LR32k gifti to fsaverage164 gifti*
+*From FS_LR32k gifti to fsaverage164 gifti* [[fs_L-to-fs_LR template]](https://github.com/Washington-University/HCPpipelines/blob/master/global/templates/standard_mesh_atlases/fs_L/fs_L-to-fs_LR_fsaverage.L_LR.spherical_std.164k_fs_L.surf.gii "[fs_L-to-fs_LR template]")
 ```shell
 wb_command -label-resample Q1-Q6_RelatedParcellation210.L.CorticalAreas_dil_Colors.32k_fs_LR.label.gii L.sphere.32k_fs_LR.surf.gii fs_L-to-fs_LR_fsaverage.L_LR.spherical_std.164k_fs_L.surf.gii BARYCENTRIC left.fsaverage164.label.gii
 ```
@@ -309,6 +344,41 @@ Last three examples taken from Kathryn Mills Figshare Post [HCP-MMP1.0 projected
 mris_convert fsaverage6-rh.label fsaverage6-rh.label.gii 
 ```
 
+### Add annotations to a func.gii (transform func.gii -> label.gii)
+
+```python
+# load unannotated (functional) gifti (i.e. resultung from a conversion from volmMNI -> fsLR32k gifti)
+gimg = nib.load(r"JULICH_BRAIN_CYTO_29_MNI152_2009C_nA.maxprob.enc.32kfslr.L.func.gii")
+
+# look at the already existing labels:
+len(gimg.labeltable.labels) #->1 (labels is a list containing only one element here)
+gimg.labeltable.labels[0].to_xml()
+#> <Label Key="0" Red="1.0" Green="1.0" Blue="1.0" Alpha="0.0">???</Label>
+# this basically indicates all voxels with value 0 are not assigned to any area
+
+# labels for indices are extracted from somewhere or manually assigned:
+# indices,labels = (list<int>, list<string>) 
+
+for (idx,label) in zip(indices,labels): print(str(idx) +": " + label)
+"""
+1: Frontal-to-Temporal-I (GapMap) left
+2: Frontal-to-Temporal-I (GapMap) right
+3: Ch 123 (Basal Forebrain) left
+4: Ch 123 (Basal Forebrain) right
+"""
+
+for (idx,label) in zip(indices,labels):
+  r,g,b = list(np.random.rand(3).round(2))		 # create some randome color for the annotation
+  l = nib.gifti.gifti.GiftiLabel(idx, r,g,b,1)			# create a GiftiLabel for the index (i.e. 3)
+  l.label = label;												 # actually assign a name/label to the parcel, i.e. "Ch 123 (Basal Forebrain) left"
+  gimg.labeltable.labels = gimg.labeltable.labels + [l]		# extend the existing labels in for the image
+
+# now save the gifti as .label.gii
+nib.save(gimg,"JULICH_BRAIN_CYTO_29_MNI152_2009C_nA.maxprob.enc.32kfslr.L.label.gii") 
+
+
+```
+
 ### Get an ROI from a Gifti parcellation
 
 In the HCP data a parcellation is i.e. given for each subject under:
@@ -318,7 +388,7 @@ In the HCP data a parcellation is i.e. given for each subject under:
 ```python
 import nibabel as nib
 
-nib.load(r"/data/hcp/hcp-subjectname/MNINonLinear/fsaverage_LR32k/subjectname.L.aparc.32k_fs_LR.label.gii")
+AnatLabels = nib.load(r"/data/hcp/hcp-subjectname/MNINonLinear/fsaverage_LR32k/subjectname.L.aparc.32k_fs_LR.label.gii")
 AnatLabelsData= AnatLabels.darrays[0].data
 # -> array([10, 29, 24, ..., 15, 15, 15] of shape (32492,)
 
@@ -330,7 +400,6 @@ AnatLabels.get_labeltable().labels[20].label
 #-> u'L_parstriangularis'
 
 triangularis_mask = AnatLabelsData == 20;
-
 ```
 
 
@@ -447,5 +516,3 @@ https://mvpa.blogspot.com/2018/02/connectome-workbench-making-surface.html
 ***Unofficial*** Guide to the HCP surface file formats
 https://emmarobinson01.com/2016/02/10/unofficial-guide-to-the-hcp-surface-file-formats/
 An important thing to recognise first about the HCP surface file format is that it has two versions of the atlas space: 164k_FS_LR and 32k_FS_LR. These atlases are regularly spaced and represent a left-right symmetric atlas developed  by Washu U in [3]. FS stands for FreeSurfer, and indicates the atlas is related to the FreeSurfer atlas fsaverage.
-
-
