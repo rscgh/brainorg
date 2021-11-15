@@ -428,6 +428,23 @@ triangularis_mask = AnatLabelsData == 20;
 
 <br/><br/><br/><br/><br/><br/><br/><br/><br/>
 
+# FSaverage spaces
+
+Information taken from [this mailing list thread](https://www.mail-archive.com/freesurfer@nmr.mgh.harvard.edu/msg28867.html):
+
+> Hi Ludovico, I'm not sure exactly what your pipeline is, but you should use  fsaverage for vol2surf, then go from fsaverage to fsaverage4 or 5 with  mri_surf2surf. The reason is that if you go directly to 4 or 5, you will miss data between the vertices. The distance between the vertices for **fsaverage4 is about 5.5mm** and it is about **3mm for fsaverage5**, **1.4 for fsaverage6**, and **.7mm for fsaverage** (these are all for the white surface).
+
+So it seems as if the standard fsaverge could be considered fsaverage7.
+
+>  Which surface is "6mm" defined on? Is it .sphere, .white, or something else?
+
+> It is based on the white. Notice that since you are using an average subject (fsaverage6) there is some scaling that happens because an average subject will have a surface area that is much less than the average of the subjects that went into. The average of the subjects is kept when the average subject is created and used when the number of iterations is computed.
+
+# fsaverage4
+# fsaverage5
+
+Data are defined on a surface with 10,024 vertices (FreeSurfer **fsaverage 5**). One shows the standard averaging referred to as Mean, the averaging after Gaussian smoothing is referred to as Mean (S) (mean after Gaussian smoothing with
+
 # HCP Processing Pipeline:
 
 Usually human connectome data seems to be aligned to the 32k_FS_LR atlas space (but also alignments to fsaverage are available) based on the Conte69 "mesh".
