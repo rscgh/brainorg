@@ -440,10 +440,15 @@ So it seems as if the standard fsaverge could be considered fsaverage7.
 
 > It is based on the white. Notice that since you are using an average subject (fsaverage6) there is some scaling that happens because an average subject will have a surface area that is much less than the average of the subjects that went into. The average of the subjects is kept when the average subject is created and used when the number of iterations is computed.
 
-# fsaverage4
-# fsaverage5
-
+**fsaverage5**
 Data are defined on a surface with 10,024 vertices (FreeSurfer **fsaverage 5**). One shows the standard averaging referred to as Mean, the averaging after Gaussian smoothing is referred to as Mean (S) (mean after Gaussian smoothing with
+
+**fsaverage164**
+
+probably corresponds to fsaverage == fsaverage7; model calculation:
+
+* fsaverge5 if it was squared would have $\sqrt(10024)$ ~ 100 vertices on each side, with between vertex distance of 3mm. Hence each side would roughly of length 100vertices x 3mm = 300mm
+* we know for fsaverage(7) the mean vertex distance is 0.7mm, that is each side of length 300mm would contain ~ 428 vertices (300mm/0.7mm/vertex). So the total number of vertices can be roughly estimated as $428^2 = 183184$ which is close to 164k
 
 # HCP Processing Pipeline:
 
