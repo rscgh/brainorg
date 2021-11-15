@@ -531,6 +531,16 @@ Usual File Names:
 Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors.32k_fs_LR.dlabel.nii
 
 
+## HCP MMP1 on fsaverge
+
+https://figshare.com/articles/dataset/HCP-MMP1_0_projected_on_fsaverage/3498446
+
+## HCP MMP1 in AFNI
+
+FNI will now include the Human Connectome Project brain atlas in MNI space, originally from Glasser, et al, Nature 2016. It will be available by default in AFNI's whereami output, both in the GUI and on the command line. 
+
+https://openwetware.org/wiki/Beauchamp:CorticalSurfaceHCP
+https://afni.nimh.nih.gov/pub/dist/atlases/MNI_HCP/
 
 # Useful Links:
 
