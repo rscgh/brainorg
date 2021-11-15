@@ -161,7 +161,7 @@ Internally these should look mostly similiar. For more info check out the [Layma
 
 This format I think was created for/by the Human connectome project (HCP; and hence examples may focus on it a bit more).
 
-### Create a new Cifti (left cortex excluding medial wall)
+### Create a new Cifti (29k vertices describing left cortex excluding medial wall)
 
 Each Cifti file needs an assocaited brain model (i.e. which areas are included in the cifti file, such as left hemisphere aka "LEFT_CORTEX", right hemisphere etc). This brain model we can take from an already existing file, such as the resting state run of an HCP subject:
 
@@ -178,7 +178,7 @@ img = nib.load(resting_state_run)
 left_cortex_excluding_medial_wall = list(img.header.matrix._mims[1].brain_models)[0].vertex_indices._indices
 
 # create a dummy array for the greyvoxel data, and only set the vertices that are not part of the medial wall to 1
-mask = np.zeros((32492)); 
+mask = np.zeros((32492)); # the 32k resolution is standard; there is also higher ~ 164k?
 np.put(mask, left_cortex_excluding_medial_wall, 1)
 
 # create a new brain model with only the left cortex exluding medial wall
