@@ -305,10 +305,12 @@ wb_command -cifti-create-dense-scalar juelich_atlas_v29.maxprob.enc.32kfslr.LR.d
 ## Gifti
 
 
-* `.surf.gii` files provide the 3D brain mesh/object backbone. Contains the mapping from greyordinate vertex to its location in 3D.
-* `shape.gii` or `func.gii` contain actual data, such as cortical thickness etc. (similiar to what can be contained in cifti files?)
-* `label.gii` contain integer data, indicating the parcel each vertex belongs to; + a mapping from these integer values to parcel labels
+* `.surf.gii` files (also called `Geometry` or `surface` files) provide the 3D brain mesh/object backbone. Contains the mapping from greyordinate vertex to its location in 3D. They are also referred to as 
+* `shape.gii` or `func.gii` (also called `metric` files) contain actual data, such as cortical thickness or functional activations etc. (similiar to what can be contained in cifti files?). func is usually used for multi-timepoint data 
+* `label.gii` contain integer data, indicating the parcel each vertex belongs to; + a mapping from these integer values to parcel labels (a name and a color)
 
+
+Notably, other software may put data arrays (the equivalent of a metric file) into the same file as the geometry information. The connectome workbench doesnt support this.
 
 For more info, check the posts by [Emma Robinson on Gifti/HCP surface files](https://emmarobinson01.com/2016/02/10/unofficial-guide-to-the-hcp-surface-file-formats/) and both posts by Joset (Jo) A. Etzel on [NIfTI, CIFTI, GIFTI in the HCP and Workbench](http://mvpa.blogspot.com/2014/03/nifti-cifti-gifti-in-hcp-and-workbench.html) and on [Conversion from Volumetric to Surface](https://mvpa.blogspot.com/2018/02/connectome-workbench-making-surface.html).
 
@@ -329,8 +331,14 @@ wb_command -cifti-separate Q1-Q6_RelatedParcellation210.L.CorticalAreas_dil_Colo
 
 *From FS_LR32k gifti to fsaverage164 gifti* [[fs_L-to-fs_LR template]](https://github.com/Washington-University/HCPpipelines/blob/master/global/templates/standard_mesh_atlases/fs_L/fs_L-to-fs_LR_fsaverage.L_LR.spherical_std.164k_fs_L.surf.gii "[fs_L-to-fs_LR template]")
 ```shell
+wb_command -label-resample <label-in> <current-sphere> <new-sphere> <method> <label-out>
 wb_command -label-resample Q1-Q6_RelatedParcellation210.L.CorticalAreas_dil_Colors.32k_fs_LR.label.gii L.sphere.32k_fs_LR.surf.gii fs_L-to-fs_LR_fsaverage.L_LR.spherical_std.164k_fs_L.surf.gii BARYCENTRIC left.fsaverage164.label.gii
+
+# "The ADAP_BARY_AREA method is recommended for label data, because it should be better at resolving vertices that are near multiple labels, or in case of downsampling"
+wb_command -label-resample Q1-Q6_RelatedParcellation210.L.CorticalAreas_dil_Colors.32k_fs_LR.label.gii L.sphere.32k_fs_LR.surf.gii fs_L-to-fs_LR_fsaverage.L_LR.spherical_std.164k_fs_L.surf.gii ADAP_BARY_AREA left.fsaverage164.label.gii
 ```
+
+Related functions are [`-surface-resample`](https://www.humanconnectome.org/software/workbench-command/-surface-resample) and [`-metric-resample`](https://www.humanconnectome.org/software/workbench-command/-metric-resample) for the two other respective gifti file types.
 
 *From fsaverage164 gifti to fsaverage(164?) .annot-file*
 ```shell
@@ -344,6 +352,7 @@ Last three examples taken from Kathryn Mills Figshare Post [HCP-MMP1.0 projected
 # uses Freesurfer mris_convert
 mris_convert fsaverage6-rh.label fsaverage6-rh.label.gii 
 ```
+
 
 ### Add annotations to a func.gii (transform func.gii -> label.gii)
 
