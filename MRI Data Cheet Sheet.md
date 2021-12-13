@@ -423,7 +423,29 @@ triangularis_mask = AnatLabelsData == 20;
 
 ```
 
+<br/><br/>
 
+# Toolboxes
+
+## hcp-utils
+
+https://rmldj.github.io/hcp-utils/
+
+```python
+!pip install hcp_utils
+import hcp_utils as hcp
+img = nib.load('path/to/fMRI_data_file.dtseries.nii')
+X = img.get_fdata()
+X.shape     # e.g. (700, 91282)
+X_hipL = X[:, hcp.struct.hippocampus_left]
+X_hipL.shape    # (700, 764)
+
+Xp = hcp.parcellate(Xn, hcp.yeo7)
+Xp.shape    # (700, 7)
+plotting.view_surf(mesh_sub.inflated, 
+    hcp.cortex_data(hcp.unparcellate(Xp[29], hcp.yeo7)), 
+    threshold=0.1, bg_map=mesh_sub.sulc)
+```
 
 
 <br/><br/><br/><br/><br/><br/><br/><br/><br/>
