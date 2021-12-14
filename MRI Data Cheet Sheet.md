@@ -448,7 +448,7 @@ plotting.view_surf(mesh_sub.inflated,
 ```
 
 ## brainspace
-```
+```python
 syt20 = nib.load("Schaefer2018_400Parcels_7Networks_order_Tian_Subcortex_S2.dlabel.nii")
 syt20_LR29k = syt20.get_fdata()[0,hcp.struct.cortex] # shape 59412 ~ 2*29k
 
