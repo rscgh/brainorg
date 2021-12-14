@@ -447,6 +447,14 @@ plotting.view_surf(mesh_sub.inflated,
     threshold=0.1, bg_map=mesh_sub.sulc)
 ```
 
+```
+import hcp_utils as hcp
+s1200_sulc_L = s1200_sulc[0,hcp.struct.cortex_left]     # returns 29k version (LH excluding medial wall)
+s1200_sulc_L = hcp.left_cortex_data(s1200_sulc[0,:])    # returns 32k version
+#s1200_sulc_L = hcp.left_cortex_data(s1200_sulc[0,hcp.struct.cortex_left]) # returns 32k version
+```
+
+
 ## brainspace
 ```python
 syt20 = nib.load("Schaefer2018_400Parcels_7Networks_order_Tian_Subcortex_S2.dlabel.nii")
