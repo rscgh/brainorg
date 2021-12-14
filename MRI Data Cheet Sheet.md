@@ -447,6 +447,18 @@ plotting.view_surf(mesh_sub.inflated,
     threshold=0.1, bg_map=mesh_sub.sulc)
 ```
 
+## brainspace
+```
+syt20 = nib.load("Schaefer2018_400Parcels_7Networks_order_Tian_Subcortex_S2.dlabel.nii")
+syt20_LR29k = syt20.get_fdata()[0,hcp.struct.cortex] # shape 59412 ~ 2*29k
+
+from brainspace.utils.parcellation import reduce_by_labels, map_to_labels
+print("Number of parcels in ctx atlas: ", len(np.unique(syt20_LR29k)))
+#Number of parcels in ctx atlas:  401
+mask = syt20_LR29k!=0; # only where the atlas is not zero
+timeseries_red = reduce_by_labels(timeseries[mask], syt20_LR29k[mask], axis=1, red_op='mean') #resutling shape: (400, 4800)
+grad=map_to_labels(timeseries_red, syt20_LR29k, mask=mask, fill=np.nan)
+```
 
 <br/><br/><br/><br/><br/><br/><br/><br/><br/>
 
@@ -461,6 +473,9 @@ So it seems as if the standard fsaverge could be considered fsaverage7.
 >  Which surface is "6mm" defined on? Is it .sphere, .white, or something else?
 
 > It is based on the white. Notice that since you are using an average subject (fsaverage6) there is some scaling that happens because an average subject will have a surface area that is much less than the average of the subjects that went into. The average of the subjects is kept when the average subject is created and used when the number of iterations is computed.
+
+**fsaverage4** 
+seems to have 2329 vertices in one hemisphere.
 
 **fsaverage5**
 Data are defined on a surface with 10,024 vertices (FreeSurfer **fsaverage 5**). One shows the standard averaging referred to as Mean, the averaging after Gaussian smoothing is referred to as Mean (S) (mean after Gaussian smoothing with
