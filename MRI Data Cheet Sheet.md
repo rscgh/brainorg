@@ -456,6 +456,11 @@ s1200_sulc_L = hcp.left_cortex_data(s1200_sulc[0,:])    # returns 32k version
 
 
 ## brainspace
+
+https://github.com/MICA-MNI/BrainSpace
+
+https://brainspace.readthedocs.io/en/latest/
+
 ```python
 syt20 = nib.load("Schaefer2018_400Parcels_7Networks_order_Tian_Subcortex_S2.dlabel.nii")
 syt20_LR29k = syt20.get_fdata()[0,hcp.struct.cortex] # shape 59412 ~ 2*29k
@@ -467,6 +472,32 @@ mask = syt20_LR29k!=0; # only where the atlas is not zero
 timeseries_red = reduce_by_labels(timeseries[mask], syt20_LR29k[mask], axis=1, red_op='mean') #resutling shape: (400, 4800)
 grad=map_to_labels(timeseries_red, syt20_LR29k, mask=mask, fill=np.nan)
 ```
+
+## netneurotools
+
+This toolbox is a collection of functions written in Python that get frequent usage in the Network Neuroscience Lab, housed in the Brain Imaging Centre at McGill University.
+
+https://github.com/netneurolab/netneurotools/
+
+https://netneurotools.readthedocs.io/en/latest/generated/netneurotools.datasets.fetch_cammoun2012.html
+
+https://github.com/netneurolab/netneurotools/blob/master/resources/generate_atl-cammoun2012_surface.py
+
+
+## neuromaps
+
+The neuromaps toolbox is designed to help researchers make easy, statistically-rigorous comparisons between brain maps (or brain annotations).
+
+https://github.com/netneurolab/neuromaps
+
+## AbaGen
+
+https://github.com/rmarkello/abagen
+
+In 2013, the Allen Institute for Brain Science released the Allen Human Brain Atlas, a dataset containing microarray expression data collected from six human brains (Hawrylycz et al., 2012). [...] The current Python package, abagen, aims to provide reproducible workflows for processing and preparing the AHBA microarray expression data for analysis.
+
+
+
 
 <br/><br/><br/><br/><br/><br/><br/><br/><br/>
 
