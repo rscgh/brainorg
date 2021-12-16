@@ -483,6 +483,10 @@ https://netneurotools.readthedocs.io/en/latest/generated/netneurotools.datasets.
 
 https://github.com/netneurolab/netneurotools/blob/master/resources/generate_atl-cammoun2012_surface.py
 
+```python
+from netneurotools.datasets import *
+fetch_cammoun2012("fslr32k", data_dir=r"C:\tmp\OwnCloud\res\atlases\lausanne", verbose=0)
+```
 
 ## neuromaps
 
@@ -490,12 +494,19 @@ The neuromaps toolbox is designed to help researchers make easy, statistically-r
 
 https://github.com/netneurolab/neuromaps
 
+
+```python
+from neuromaps.datasets import available_annotations
+for annotation in available_annotations(): print(annotation)
+# ('laurikainen2018', 'fmpepd2', 'MNI152', '1mm') <source>, <description>, <space>, <resolution>
+annotation = fetch_annotation(source='neurosynth') # tags=
+```
+
 ## AbaGen
 
 https://github.com/rmarkello/abagen
 
 In 2013, the Allen Institute for Brain Science released the Allen Human Brain Atlas, a dataset containing microarray expression data collected from six human brains (Hawrylycz et al., 2012). [...] The current Python package, abagen, aims to provide reproducible workflows for processing and preparing the AHBA microarray expression data for analysis.
-
 
 
 
