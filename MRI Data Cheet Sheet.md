@@ -382,7 +382,7 @@ This uses the [connectome workbench cli](). Example taken from Kathryn Mills Fig
 
 #works similiarly both labels and func: (R.label.gii, L.label.gii) -> (dlabel.nii) and (R.func.gii, L.func.gii) -> (dscalar.nii)
 # wb_command -cifti-create-dense-scalar <output> [-part <part.gifti>]
-wb_command -cifti-create-dense-scalar juelich_atlas_v29.maxprob.enc.32kfslr.LR.dscalar.nii -left-label juelich_atlas_v29.maxprob.enc.32kfslr.L.func.gii -right-label juelich_atlas_v29.enc.32kfslr.R.func.gii
+wb_command -cifti-create-dense-scalar juelich_atlas_v29.maxprob.enc.32kfslr.LR.dscalar.nii -left-metric juelich_atlas_v29.maxprob.enc.32kfslr.L.func.gii -right-metric juelich_atlas_v29.enc.32kfslr.R.func.gii
 
 # wb_command -cifti-create-label <output> [-part <part.gifti>]
 wb_command -cifti-create-label juelich_atlas_v29.maxprob.enc.32kfslr.LR.dlabel.nii -left-label juelich_atlas_v29.maxprob.enc.32kfslr.L.label.gii -right-label juelich_atlas_v29.enc.32kfslr.R.label.gii
