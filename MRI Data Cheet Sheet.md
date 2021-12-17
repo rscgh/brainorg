@@ -161,13 +161,38 @@ Internally these should look mostly similiar. For more info check out the [Layma
 
 This format I think was created for/by the Human connectome project (HCP; and hence examples may focus on it a bit more).
 
+### Look at what is contained within a cifti
+
+Scalar file:
+```python
+import nibabel as nib
+cifti=nib.load(r"MNINonlinear\fsaverage_LR32k\100206.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii" ) 
+# data within cifti of shape (1, 64984)
+cifti.header.get_axis(0) # ScalarAxis
+bma = cifti.header.get_axis(1) # BrainModelAxis
+for idx, (name, slc, bm) in enumerate(bma.iter_structures()): print((str(name), slc))
+#('CIFTI_STRUCTURE_CORTEX_LEFT', slice(0, 29696, None))
+#('CIFTI_STRUCTURE_CORTEX_RIGHT', slice(29696, None, None))
+```
+Label file:
+```python
+c = nib.load("Schaefer2018_100Parcels_7Networks_order.dlabel.nii")
+c.shape	# (1, 59412)
+c.header.get_axis(0) # LabelAxis
+bma = c.header.get_axis(1) # BrainModelAxis
+for idx, (name, slc, bm) in enumerate(bma.iter_structures()): print((str(name), slc))
+# ('CIFTI_STRUCTURE_CORTEX_LEFT', slice(0, 32492, None))
+# ('CIFTI_STRUCTURE_CORTEX_RIGHT', slice(32492, None, None))
+c.header.get_axis(0).label #-> returns [{0 : ("???" , (1,1,1,0)), 1: ("area1",(R,G,B,A))}]
+```
+
+
+
 ### Create a new Cifti (29k vertices describing left cortex excluding medial wall)
 
 Each Cifti file needs an assocaited brain model (i.e. which areas are included in the cifti file, such as left hemisphere aka "LEFT_CORTEX", right hemisphere etc). This brain model we can take from an already existing file, such as the resting state run of an HCP subject:
 
 ```python
-import nibabel as nib
-
 resting_state_run = "/data/hcp/sub-100307/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR_Atlas_hp2000_clean.dtseries.nii"
 img = nib.load(resting_state_run)
 
@@ -180,7 +205,6 @@ left_cortex_excluding_medial_wall = list(img.header.matrix._mims[1].brain_models
 # create a dummy array for the greyvoxel data, and only set the vertices that are not part of the medial wall to 1
 mask = np.zeros((32492)); # the 32k resolution is standard; there is also higher ~ 164k?
 np.put(mask, left_cortex_excluding_medial_wall, 1)
-
 # create a new brain model with only the left cortex exluding medial wall
 bm_left = nib.cifti2.BrainModelAxis.from_mask(mask, "LEFT_CORTEX")
 ```
@@ -193,12 +217,12 @@ data = np.zeros((2, 29696)); # (n_scalars, n_vertices), for the current brainmod
 
 dsnames = ["Curvature", "Thickness"];
 cimg = nib.Cifti2Image(data, nib.cifti2.Cifti2Header.from_axes((nib.cifti2.ScalarAxis(dsnames), bm_left)))
-
 # optionally save it to a file
 cimg.to_filename("path/to/new/file.dscalar.nii(.gz)");
 ```
 
-### Create a new Cifti (left cortex, with medial wall, untested)
+### Create a new scalar cifti (32k for left cortex, with medial wall, untested)
+can be used on top of fsLR32k
 
 ```python
 # create a dummy array for the greyvoxel data for the left hemisphere in 32k space, all set to one 1
@@ -211,7 +235,48 @@ dsnames = ["Curvature", "Thickness"];
 cimg = nib.Cifti2Image(data, nib.cifti2.Cifti2Header.from_axes((nib.cifti2.ScalarAxis(dsnames), bm_left)))
 ```
 
-### HCP: Load resting state run Cifti and extract left cortex data
+### Create a new scalar cifti (29k vertices for each left & right cortex)
+medial wall is beeing excluded again, can be used on top of fsLR32k
+```python
+# mask out the medial wall on each side individually (using hcp-utils this time)
+import hcp-utils as hcp
+mask_l = np.zeros((32492)); np.put(mask_l, hcp.vertex_info['grayl'], 1)
+mask_r = np.zeros((32492)); np.put(mask_r, hcp.vertex_info['grayr'], 1)
+
+# and create the brain axes that exclude medial wall stuff
+bma_left = nib.cifti2.BrainModelAxis.from_mask(mask_l, "LEFT_CORTEX")
+bma_right = nib.cifti2.BrainModelAxis.from_mask(mask_r, "RIGHT_CORTEX")
+bma_corticesLR = bma_left + bma_right
+print(bma_corticesLR.nvertices) # {'CIFTI_STRUCTURE_CORTEX_LEFT': 32492, 'CIFTI_STRUCTURE_CORTEX_RIGHT': 32492}
+for idx, (name, slc, bm) in enumerate(bma_corticesLR.iter_structures()):
+    print((str(name), slc))
+#('CIFTI_STRUCTURE_CORTEX_LEFT', slice(0, 29696, None))
+#('CIFTI_STRUCTURE_CORTEX_RIGHT', slice(29696, None, None))
+```
+
+```python
+caxes= (nib.cifti2.ScalarAxis(["MyelinBC_MSMAII"]), bma_corticesLR);
+cheader=nib.cifti2.Cifti2Header.from_axes(caxes);
+cimg = nib.Cifti2Image(myelin_data59k_LR , cheader)
+```
+
+### Create a new label cifti (29k vertices for each left & right cortex)
+
+```python
+# Create the Label axis with 3 'areas'
+new_label_dict = {0 : ("unassigned" , (1,1,1,0)), 1: ("area1",(R,G,B,A)), 2: ("area2",(1,0.3,0.3,1)), ...}
+lax = nib.cifti2.cifti2_axes.LabelAxis(["parcels"], new_label_dict)
+
+# create the header and the cifti
+cheader=nib.cifti2.Cifti2Header.from_axes((lax, bma_corticesLR));
+# data_29kLR of shape (,59k) -> needs to be (1, 59k)
+cimg = nib.Cifti2Image(np.expand_dims(data_29kLR, axis=0), cheader)
+cimg.to_filename("data_29kLR.dlabel.nii");
+```
+
+
+
+### HCP: Load resting state run cifti-files and extract (left) cortex data
 
 ```python
 resting_state_run = "/data/hcp/sub-100307/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR_Atlas_hp2000_clean.dtseries.nii"
@@ -229,10 +294,31 @@ list(img.header.matrix._mims[1].brain_models)[structure_index].index_count      
 
 This resting state run is aligned by default to the FS_LR32k space. That kinda means each hemisphere is formed by ~32k greyordinates/vertices. But here we only have 29696 vertices for the left hemisphere. This is because the medial wall was excluded (as it is nessesary for the 3D mesh to exist, but does not contain any grey matter in reality). Exluding it saves storage space.
 
-To get the resting state data for the LH only, simply do:
+To get the resting state data from HCP files for the LH only, simply do:
 
 ```python
-left_ctx_tseries = fullbrain_tseries[:, 0: 0+29696];
+left_ctx_tseries29k; = fullbrain_tseries29k[:, 0: 0+29696];
+```
+
+Or more generally, for data in the HCP format (fsLR32k excluding medial wall, so actually having more like 29k), the `hcp-utils` toolbox can be used
+```python
+left_ctx_tseries = fullbrain_tseries[:, hcp.struct.cortex_left ];
+# for non-HCP files that have 32k per hemisphere, do:
+run29k_L = run32k_L[:, hcp.vertex_info['grayl'] ]
+# if both left and right are concatenated in the run (2x32k = 64k), one can do the following:
+cortexLR = list(hcp.vertex_info['grayl']) + list(hcp.vertex_info['grayr'] + 32492)
+run59k_LR = run64k_L[:, hcp.vertex_info['grayl'] ]
+```
+
+For displaying on 32k mesh files of i.e. the cortical surface, we need to project onto the relevant vertices in this 32k space (others are left at 0):
+```python
+# to project back onto 32k 
+left_cortex_excluding_medial_wall = list(img.header.matrix._mims[1].brain_models)[0].vertex_indices._indices
+left_ctx_tseries32k = np.zeros((32492));
+left_ctx_tseries32k[left_cortex_excluding_medial_wall] = left_ctx_tseries29k;
+
+# to project back onto 32k using hcp-utils
+left_ctx_tseries32k = hcp.left_cortex_data(left_ctx_tseries29k;)    # returns 32k version
 ```
 
 The full HCP cifti greyordinate data composition looks like:
@@ -293,14 +379,17 @@ This uses the [connectome workbench cli](). Example taken from Kathryn Mills Fig
 ### Combine Gifti into Cifti
 
 ```shell
+
+#works similiarly both labels and func: (R.label.gii, L.label.gii) -> (dlabel.nii) and (R.func.gii, L.func.gii) -> (dscalar.nii)
+# wb_command -cifti-create-dense-scalar <output> [-part <part.gifti>]
+wb_command -cifti-create-dense-scalar juelich_atlas_v29.maxprob.enc.32kfslr.LR.dscalar.nii -left-label juelich_atlas_v29.maxprob.enc.32kfslr.L.func.gii -right-label juelich_atlas_v29.enc.32kfslr.R.func.gii
+
 # wb_command -cifti-create-label <output> [-part <part.gifti>]
 wb_command -cifti-create-label juelich_atlas_v29.maxprob.enc.32kfslr.LR.dlabel.nii -left-label juelich_atlas_v29.maxprob.enc.32kfslr.L.label.gii -right-label juelich_atlas_v29.enc.32kfslr.R.label.gii
 
-#works similiarly both labels and func: (R.label.gii, L.label.gii) -> (dlabel.nii) and (R.func.gii, L.func.gii) -> (dscalar.nii)
-wb_command -cifti-create-dense-scalar juelich_atlas_v29.maxprob.enc.32kfslr.LR.dscalar.nii -left-label juelich_atlas_v29.maxprob.enc.32kfslr.L.func.gii -right-label juelich_atlas_v29.enc.32kfslr.R.func.gii
-
 # ... and timeseries: -cifti-create-dense-timeseries
 ```
+* create label needs a label mapping (`gimg.labeltable.labels`) in both of the metric (`*.label.gii`) files, as only those parcels are included in the combined image that are described in the mapping
 
 ## Gifti
 
@@ -447,11 +536,22 @@ plotting.view_surf(mesh_sub.inflated,
     threshold=0.1, bg_map=mesh_sub.sulc)
 ```
 
-```
+```python
 import hcp_utils as hcp
+# the HCP file s1200_sulc i.e. contains 29k for left cortex and 29k for right cortex
 s1200_sulc_L = s1200_sulc[0,hcp.struct.cortex_left]     # returns 29k version (LH excluding medial wall)
 s1200_sulc_L = hcp.left_cortex_data(s1200_sulc[0,:])    # returns 32k version
 #s1200_sulc_L = hcp.left_cortex_data(s1200_sulc[0,hcp.struct.cortex_left]) # returns 32k version
+```
+
+```python
+# to project back onto 32k using hcp-utils
+left_ctx_tseries32k = hcp.left_cortex_data(left_ctx_tseries29k;)    # returns 32k version
+# for non-HCP files that have 32k per hemisphere, do:
+run29k_L = run32k_L[:, hcp.vertex_info['grayl'] ]
+# if both left and right are concatenated in the run (2x32k = 64k), one can do the following:
+cortexLR = list(hcp.vertex_info['grayl']) + list(hcp.vertex_info['grayr'] + 32492)
+run59k_LR = run64k_L[:, hcp.vertex_info['grayl'] ]
 ```
 
 
