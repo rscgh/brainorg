@@ -637,6 +637,19 @@ probably corresponds to fsaverage == fsaverage7; model calculation:
 * fsaverge5 if it was squared would have $\sqrt(10024)$ ~ 100 vertices on each side, with between vertex distance of 3mm. Hence each side would roughly of length 100vertices x 3mm = 300mm
 * we know for fsaverage(7) the mean vertex distance is 0.7mm, that is each side of length 300mm would contain ~ 428 vertices (300mm/0.7mm/vertex). So the total number of vertices can be roughly estimated as $428^2 = 183184$ which is close to 164k
 
+
+**info from nilearn**
+‘fsaverage3’: the low-resolution fsaverage3 mesh (642 nodes)
+‘fsaverage4’: the low-resolution fsaverage4 mesh (2562 nodes)
+‘fsaverage5’: the low-resolution fsaverage5 mesh (10242 nodes)
+‘fsaverage6’: the medium-resolution fsaverage6 mesh (40962 nodes)
+‘fsaverage7’: same as ‘fsaverage’
+‘fsaverage’: the high-resolution fsaverage mesh (163842 nodes)
+https://nilearn.github.io/modules/generated/nilearn.datasets.fetch_surf_fsaverage.html#nilearn.datasets.fetch_surf_fsaverage
+
+
+
+
 # HCP Processing Pipeline:
 
 Usually human connectome data seems to be aligned to the 32k_FS_LR atlas space (but also alignments to fsaverage are available) based on the Conte69 "mesh".
