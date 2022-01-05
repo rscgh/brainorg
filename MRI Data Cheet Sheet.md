@@ -13,7 +13,7 @@ For editing of this file, use i.e. [pandao MD editor](https://pandao.github.io/e
 ## File Types Overview
 
 **Standard formats**
-* `Nifti: .nii, .nii.gz` - software like FSLeyes to view and [Reorient](A Web tool for reorienting and cropping MRI data.) to correct alignment)
+* `Nifti: .nii, .nii.gz` - software like FSLeyes to view and [Reorient](https://github.com/neuroanatomy/reorient) to correct alignment)
 * `Cifti: dscalar.nii, dlabel.nii, dtseries.nii, (plabel.nii)`, contains only data, but no meshes, use HCP Conenctome Workbench
 * `Gifti data: shape.gii,  func.gii, label.gii `
 * `Gifti mesh: surf.gii`
@@ -40,8 +40,8 @@ See also the different freesurfer spaces in the end of this document.
 * `.trk` - [Tractogram file](https://nipy.org/nibabel/reference/nibabel.streamlines.html#nibabel.streamlines.tractogram_file.TractogramFile)
 * the following files are specific to HCPSubject/T1w/Diffusion, see [here]():
 * `data.nii.gz` [specific: HCPSubject/T1w/Diffusion] - (preprocessed diffusion time series file)
-* `nodif_brain_mask.nii.gz` (brain mask in diffusion space) 
-* `grad_dev.nii.gz` [specific: HCPSubject/T1w/Diffusion] - (contains the effects of gradient nonlinearities on the bvals and bvecs for each voxel)
+* `nodif_brain_mask.nii.gz`  [HCP specific] - brain mask in diffusion space
+* `grad_dev.nii.gz` [HCP specific] - contains the effects of gradient nonlinearities on the bvals and bvecs for each voxel
 Further links: [Read bvals/bvecs + create a gradient table](ttps://dipy.org/documentation/1.1.1./reference/dipy.data/#dipy.data.GradientTable), [Tissue Classification for getting WM mask](https://dipy.org/documentation/1.0.0./examples_built/tissue_classification/), [csa_peaks](https://dipy.org/documentation/1.0.0./examples_built/tracking_introduction_eudx/) and [Local Streamline tracking](https://dipy.org/documentation/1.4.1./examples_built/streamline_tools/#example-streamline-tools), [Streamlines](https://nipy.org/nibabel/reference/nibabel.streamlines.html) and [Tractogram files](https://nipy.org/nibabel/reference/nibabel.streamlines.html#nibabel.streamlines.tractogram_file.TractogramFile)
 
 ## Nifti
