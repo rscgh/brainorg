@@ -33,6 +33,17 @@ https://github.com/binarybottle/mindboggle_sidelined/blob/master/freesurfer.py
 
 See also the different freesurfer spaces in the end of this document. 
 
+**Structural connectivity related files**
+* `.bvals` - contains the diffusion weighting (b-value) for each volume
+* `.bvecs` - contains the diffusion direction (b-vector) for each volume
+* `.bvals` - subject's convexity data
+* `.trk` - [Tractogram file](https://nipy.org/nibabel/reference/nibabel.streamlines.html#nibabel.streamlines.tractogram_file.TractogramFile)
+* the following files are specific to HCPSubject/T1w/Diffusion, see [here]():
+* `data.nii.gz` [specific: HCPSubject/T1w/Diffusion] - (preprocessed diffusion time series file)
+* `nodif_brain_mask.nii.gz` (brain mask in diffusion space) 
+* `grad_dev.nii.gz` [specific: HCPSubject/T1w/Diffusion] - (contains the effects of gradient nonlinearities on the bvals and bvecs for each voxel)
+Further links: [Read bvals/bvecs + create a gradient table](ttps://dipy.org/documentation/1.1.1./reference/dipy.data/#dipy.data.GradientTable), [Tissue Classification for getting WM mask](https://dipy.org/documentation/1.0.0./examples_built/tissue_classification/), [csa_peaks](https://dipy.org/documentation/1.0.0./examples_built/tracking_introduction_eudx/) and [Local Streamline tracking](https://dipy.org/documentation/1.4.1./examples_built/streamline_tools/#example-streamline-tools), [Streamlines](https://nipy.org/nibabel/reference/nibabel.streamlines.html) and [Tractogram files](https://nipy.org/nibabel/reference/nibabel.streamlines.html#nibabel.streamlines.tractogram_file.TractogramFile)
+
 ## Nifti
 
 Niftis are files that usually contain 3-dimensional volumetric data (except for when they are misused for surface data storage or when used as cifti files). Standard brain scan data. They also contain an affine matrix that describes how this data can be anchored into space (i.e. to align volumetric data of different granularity - or with some roation - with each other. They also have headers.
