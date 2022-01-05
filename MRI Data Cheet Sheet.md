@@ -7,7 +7,31 @@ This makes mainly use of
 * the [connectome workbench](https://humanconnectome.org/software/connectome-workbench "connectome workbench") CLI ([wb_command function reference](https://humanconnectome.org/software/workbench-command "wb_command function reference")) and 
 * [FSL](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki "FSL") ([fslmaths commands](https://mandymejia.com/fsl-maths-commands/ "fslmaths commands"))
 
-For editing of this file, use i.e. [pandao MD editor](https://pandao.github.io/editor.md/)
+For editing of this file, use i.e. [pandao MD editor](https://pandao.github.io/editor.md/) or [stackedit](https://stackedit.io/app#)
+
+
+## File Types Overview
+
+**Standard formats**
+* Nifti: .nii, .nii.gz
+* Cifti: dscalar.nii, dlabel.nii, dtseries.nii, (plabel.nii)
+* Gifti data: shape.gii,  func.gii, label.gii 
+* Gifti mesh: surf.gii*
+
+**Freesurfer formats**
+* lh.sphere
+* ?h.sulc - subject's convexity data
+* ?h.smoothwm surface
+* ...
+* subj01_parc_masks.mgz - volumetric parcellation?
+* lh.XXXX.annot - annotation/parcellation mapped to an individual (or refrence template), can also contain a color mapping, see [here](https://surfer.nmr.mgh.harvard.edu/fswiki/LabelsClutsAnnotationFiles#Annotation)
+* XXXColorLUT.txt - label name to RGBA color mapping (weirdly enough, it doesnt map label iDs), see [here](https://surfer.nmr.mgh.harvard.edu/fswiki/LabelsClutsAnnotationFiles#Annotation)
+* lh.XXXX.gcs - atlas file based on multiple individual annotations along with geometric (sulci/gyri) data that allows freesurfer automatically map this parcellations to individuals
+
+See [freesurfer parcellation overview](https://surfer.nmr.mgh.harvard.edu/fswiki/CorticalParcellation) and the related [automatic surface labelling process](https://surfer.nmr.mgh.harvard.edu/fswiki/SurfaceLabelAtlas)
+https://github.com/binarybottle/mindboggle_sidelined/blob/master/freesurfer.py
+
+See also the different freesurfer spaces in the end of this document. 
 
 ## Nifti
 
@@ -404,6 +428,8 @@ Notably, other software may put data arrays (the equivalent of a metric file) in
 For more info, check the posts by [Emma Robinson on Gifti/HCP surface files](https://emmarobinson01.com/2016/02/10/unofficial-guide-to-the-hcp-surface-file-formats/) and both posts by Joset (Jo) A. Etzel on [NIfTI, CIFTI, GIFTI in the HCP and Workbench](http://mvpa.blogspot.com/2014/03/nifti-cifti-gifti-in-hcp-and-workbench.html) and on [Conversion from Volumetric to Surface](https://mvpa.blogspot.com/2018/02/connectome-workbench-making-surface.html).
 
 
+
+
 ### Convert annoations between surface data types
 
 *From gifti to cifti (within FS_LR32k)* 
@@ -474,7 +500,50 @@ for (idx,label) in zip(indices,labels):
 
 # now save the gifti as .label.gii
 nib.save(gimg,"JULICH_BRAIN_CYTO_29_MNI152_2009C_nA.maxprob.enc.32kfslr.L.label.gii") 
+```
 
+
+### Create a gifti (.label.gii) from scratch (or using an annot file)
+
+```python
+import nibabel as nib
+
+annotfn   = r"\lausanne2018_fsaverage\lh.lausanne2008.scale1.annot"  
+giifn     = r"\lausanne2018_fsaverage\lh.lausanne2008.scale1.gii"  
+label_out = r"lausanne08.sc1.fslr32k.L.label.gii"  
+
+## load annot file and convert directly to gifti  
+fslabels, fsctab, fsnames = nib.freesurfer.io.read_annot(annotfn)  
+#fslabels: 163842 labeled voxels in L, i.e.: [10 18  8  7 10 17 23 20  0  1] (35 unique labels)
+#fsctab if of length 35, with fsctab[0] beeing i.e. [250 250 250 0 16448250] (RGBT+)
+#fsnames (len of 35), i.e.: [b'unknown', b'lateralorbitofrontal', b'parsorbitalis']
+
+# usually a gifti describes a single anatomical strcture
+# this has to be given as metadata, as otherwise i.e. the HCP workbench doesnt know how to place the data onto a mesh 
+gmeta =  nib.gifti.GiftiMetaData(nib.gifti.GiftiNVPairs("AnatomicalStructurePrimary", bstruct))  
+# data should be the same size and order of the vertices contained within the relevant surface mesh (here: the annot file described the left hemisphere of fasaverage(7) which has 164k vertices (163842)
+ga = nib.gifti.GiftiDataArray(data=fslabels, intent="NIFTI_INTENT_NORMAL", datatype="NIFTI_TYPE_INT32");  # dtpe can also be *_FLOAT32 (=default?)
+
+# for .label.gii files we should also provide a lable table (this can also aparrently contain unassigned labels; these are merged when a cifti is created from two hemisphere giftis
+lt = nib.gifti.GiftiLabelTable();  
+for i in range(len(fsnames)):  
+  r,g,b = np.array(fsctab[i, :3])/255	# colors should be in range [0, 1]  
+  l = nib.gifti.gifti.GiftiLabel(i, r,g,b,1) # create a GiftiLabel for the index (i.e. 3)  
+  l.label = fsnames[i].decode("utf-8"); # actually assign a name/label to the parcel, i.e. "Ch 123 (Basal Forebrain) left"  
+  lt.labels = lt.labels + [l]    # extend the existing labels in for the image  
+  
+# finally create and save the gifti
+g = nib.gifti.GiftiImage(labeltable=lt, darrays=[ga], meta=gmeta)  
+g.to_filename(giifn)
+```
+
+```python
+# do the other hemisphere too ...
+
+# optionally join the two resulting fsLR32k .gii files again to a joint cifti (.dlabel.nii)  
+labelL = os.path.join(adir, "fsLR32k", f"lausanne08.sc{scale}.fslr32k.L.label.gii")  
+labelR = os.path.join(adir, "fsLR32k", f"lausanne08.sc{scale}.fslr32k.R.label.gii")  
+cmd = f"wb_command -cifti-create-label {out_cifti} -left-label {labelL} -right-label {labelR}"
 
 ```
 
@@ -504,7 +573,7 @@ triangularis_mask = AnatLabelsData == 20;
 
 
 
-### Misc: working with surface data in a 2D plane
+## Misc: working with surface data in a 2D plane
 
 
 ```python
@@ -758,5 +827,6 @@ https://mvpa.blogspot.com/2018/02/connectome-workbench-making-surface.html
 ***Unofficial*** Guide to the HCP surface file formats
 https://emmarobinson01.com/2016/02/10/unofficial-guide-to-the-hcp-surface-file-formats/
 An important thing to recognise first about the HCP surface file format is that it has two versions of the atlas space: 164k_FS_LR and 32k_FS_LR. These atlases are regularly spaced and represent a left-right symmetric atlas developed  by Washu U in [3]. FS stands for FreeSurfer, and indicates the atlas is related to the FreeSurfer atlas fsaverage.
+
 
 
