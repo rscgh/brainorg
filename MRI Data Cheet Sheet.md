@@ -520,7 +520,7 @@ fslabels, fsctab, fsnames = nib.freesurfer.io.read_annot(annotfn)
 
 # usually a gifti describes a single anatomical strcture
 # this has to be given as metadata, as otherwise i.e. the HCP workbench doesnt know how to place the data onto a mesh 
-gmeta =  nib.gifti.GiftiMetaData(nib.gifti.GiftiNVPairs("AnatomicalStructurePrimary", bstruct))  
+gmeta =  nib.gifti.GiftiMetaData(nib.gifti.GiftiNVPairs("AnatomicalStructurePrimary", "CortexLeft"))  
 # data should be the same size and order of the vertices contained within the relevant surface mesh (here: the annot file described the left hemisphere of fasaverage(7) which has 164k vertices (163842)
 ga = nib.gifti.GiftiDataArray(data=fslabels, intent="NIFTI_INTENT_NORMAL", datatype="NIFTI_TYPE_INT32");  # dtpe can also be *_FLOAT32 (=default?)
 
