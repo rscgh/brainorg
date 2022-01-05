@@ -13,20 +13,20 @@ For editing of this file, use i.e. [pandao MD editor](https://pandao.github.io/e
 ## File Types Overview
 
 **Standard formats**
-* Nifti: .nii, .nii.gz
-* Cifti: dscalar.nii, dlabel.nii, dtseries.nii, (plabel.nii)
-* Gifti data: shape.gii,  func.gii, label.gii 
-* Gifti mesh: surf.gii*
+* `Nifti: .nii, .nii.gz` - software like FSLeyes to view and [Reorient](A Web tool for reorienting and cropping MRI data.) to correct alignment)
+* `Cifti: dscalar.nii, dlabel.nii, dtseries.nii, (plabel.nii)`, contains only data, but no meshes, use HCP Conenctome Workbench
+* `Gifti data: shape.gii,  func.gii, label.gii `
+* `Gifti mesh: surf.gii`
 
 **Freesurfer formats**
-* lh.sphere
-* ?h.sulc - subject's convexity data
-* ?h.smoothwm surface
+* `lh.sphere`
+* `?h.sulc` - subject's convexity data
+* `?h.smoothwm` surface
 * ...
-* subj01_parc_masks.mgz - volumetric parcellation?
-* lh.XXXX.annot - annotation/parcellation mapped to an individual (or refrence template), can also contain a color mapping, see [here](https://surfer.nmr.mgh.harvard.edu/fswiki/LabelsClutsAnnotationFiles#Annotation)
-* XXXColorLUT.txt - label name to RGBA color mapping (weirdly enough, it doesnt map label iDs), see [here](https://surfer.nmr.mgh.harvard.edu/fswiki/LabelsClutsAnnotationFiles#Annotation)
-* lh.XXXX.gcs - atlas file based on multiple individual annotations along with geometric (sulci/gyri) data that allows freesurfer automatically map this parcellations to individuals
+* `subj01_parc_masks.mgz` - volumetric parcellation?
+* `lh.XXXX.annot` - annotation/parcellation mapped to an individual (or refrence template), can also contain a color mapping, see [here](https://surfer.nmr.mgh.harvard.edu/fswiki/LabelsClutsAnnotationFiles#Annotation)
+* `XXXColorLUT.txt` - label name to RGBA color mapping (weirdly enough, it doesnt map label iDs), see [here](https://surfer.nmr.mgh.harvard.edu/fswiki/LabelsClutsAnnotationFiles#Annotation)
+* `lh.XXXX.gcs` - atlas file based on multiple individual annotations along with geometric (sulci/gyri) data that allows freesurfer automatically map this parcellations to individuals
 
 See [freesurfer parcellation overview](https://surfer.nmr.mgh.harvard.edu/fswiki/CorticalParcellation) and the related [automatic surface labelling process](https://surfer.nmr.mgh.harvard.edu/fswiki/SurfaceLabelAtlas)
 https://github.com/binarybottle/mindboggle_sidelined/blob/master/freesurfer.py
@@ -827,6 +827,8 @@ https://mvpa.blogspot.com/2018/02/connectome-workbench-making-surface.html
 ***Unofficial*** Guide to the HCP surface file formats
 https://emmarobinson01.com/2016/02/10/unofficial-guide-to-the-hcp-surface-file-formats/
 An important thing to recognise first about the HCP surface file format is that it has two versions of the atlas space: 164k_FS_LR and 32k_FS_LR. These atlases are regularly spaced and represent a left-right symmetric atlas developed  by Washu U in [3]. FS stands for FreeSurfer, and indicates the atlas is related to the FreeSurfer atlas fsaverage.
+
+**MSMAll** [high level description](https://emmarobinson01.com/2015/10/23/multimodal-surface-matching-msm-a-flexible-tool-for-aligning-generic-data-on-the-cortical-surface/)
 
 
 
