@@ -219,6 +219,11 @@ for idx, (name, slc, bm) in enumerate(bma.iter_structures()): print((str(name), 
 # ('CIFTI_STRUCTURE_CORTEX_LEFT', slice(0, 32492, None))
 # ('CIFTI_STRUCTURE_CORTEX_RIGHT', slice(32492, None, None))
 c.header.get_axis(0).label #-> returns [{0 : ("???" , (1,1,1,0)), 1: ("area1",(R,G,B,A))}]
+
+# alternative
+label_dict = c.header.get_axis(0).label[0]
+label_name_dict = {k : label_dict[k][0] for  k  in  label_dict.keys()}
+label_name_dict #=> {0: "???", 1: "L_Parcel_1", ..., 4502: "R_Parcel_2250", ...}
 ```
 
 
@@ -439,6 +444,22 @@ Notably, other software may put data arrays (the equivalent of a metric file) in
 For more info, check the posts by [Emma Robinson on Gifti/HCP surface files](https://emmarobinson01.com/2016/02/10/unofficial-guide-to-the-hcp-surface-file-formats/) and both posts by Joset (Jo) A. Etzel on [NIfTI, CIFTI, GIFTI in the HCP and Workbench](http://mvpa.blogspot.com/2014/03/nifti-cifti-gifti-in-hcp-and-workbench.html) and on [Conversion from Volumetric to Surface](https://mvpa.blogspot.com/2018/02/connectome-workbench-making-surface.html).
 
 
+### Look at what is contained within a cifti
+
+```python 
+import nibabel as nib
+src = f"nconn.left.fsav164.label.gii"
+gimg=nib.load(src)
+gimg.print_summary()
+
+leftd = gii.darrays[0].data
+gimg.labeltable.labels
+gimg.get_labeltable().labels
+```
+
+### Create a new Gifti 
+//(29k vertices describing left cortex excluding medial wall)
+
 
 
 ### Convert annoations between surface data types
@@ -470,6 +491,38 @@ Related functions are [`-surface-resample`](https://www.humanconnectome.org/soft
 ```shell
 mris_convert --annot left.fsaverage164.label.gii fs_L-to-fs_LR_fsaverage.L_LR.spherical_std.164k_fs_L.surf.gii lh.HCP-MMP1.annot
 ```
+sometimes the latter approach can lead to problems (i.e. due to repeating color values?), so conversion can also be done manually:
+```python
+gimg = nib.load("nconn.L.fsav164.label.gii")
+max_label_value = gimg.darrays[0].data.max();
+
+existing_labels=[];
+fsctab = np.zeros((max_label_value+1, 5), int) # one entry for each potential label
+fsnames =["Excluded"+str(x) for  x  in  range(max_label_value+1)] # initialize names for all potential labels
+for  n, l  in  enumerate(gimg.labeltable.labels):
+  if  not(l.key in  gimg.darrays[0].data): continue	# dont add it the annotation of the current parcel id if its not even contained in the source image ...
+  fst = [int(x* 255) for  x  in  l.rgba[:3]] + [0, 0] # transparency of 0, and last entry will be filled later
+  freesurfer_color_based_id = nib.freesurfer.io._pack_rgb(np.array(fst[:3]))[0];
+  # make sure that no color value repreats (as this is used for mapping within freesurfer)
+	while  l.key!=0  and  freesurfer_color_based_id  in  existing_labels:
+		print("Detected existing label; change the color for label: ", l.key)
+		fst = list(np.random.randint(0,255,3))+ [0, 0]
+		freesurfer_color_based_id = nib.freesurfer.io._pack_rgb(np.array(fst[:3]))[0];
+		
+	existing_labels = existing_labels + [freesurfer_color_based_id];
+	fsnames[l.key] = l.label
+	fsctab[l.key,:] = np.array(fst)
+
+# now actually add the freesurfer_color_based_id's to the color table (this could have been done earlier already)
+fsctab = np.hstack((fsctab[:, :4], nib.freesurfer.io._pack_rgb(fsctab[:, :3])))
+fslabels = gimg.darrays[0].data;
+nib.freesurfer.io.write_annot("left.nconn.fsav164.annot", fslabels, fsctab, fsnames, fill_ctab=False)
+
+# Quality control: make sure we get the same labels after transforming, saving and reading:
+res_labels, res_ctab, res_names = nib.freesurfer.io.read_annot("left.nconn.fsav164.annot");
+assert  np.all(res_labels== gimg.darrays[0].data)
+```
+
 
 Last three examples taken from Kathryn Mills Figshare Post [HCP-MMP1.0 projected on fsaverage](https://figshare.com/articles/dataset/HCP-MMP1_0_projected_on_fsaverage/3498446).
 
@@ -581,8 +634,33 @@ AnatLabels.get_labeltable().labels[20].label
 triangularis_mask = AnatLabelsData == 20;
 ```
 
+## Freesurfer Files
+### Annot files
 
+```py
+annotLfn = f"lh.nconn.fsav164.annot"
+x = nib.freesurfer.io.read_annot(annotLfn)
+annot_left_label_ids, annot_left_fs_color_table, annot_left_label_names = x; 
+#annot_left_label_ids   => [2714, 3334, 3550, 4337,...]
+#annot_left_fs_color_table => [[250 250 250 0 16448250], ...] #(RGBT+)
+# this color table is usually in order of the actual label ids (as returned in annot_label_ids):
+#freesurfer_color_based_parcel_id = ctab[:,-1][actual_parcel_id]
+#annot_left_label_names => [b'???', b'LabelName1', b'LabelName2', b'LabelName3', ...]
+# fsnames has the same length as the color table, first entry corresponds to label with the value of 0
+```
 
+** fsaverage to volumetric**
+
+```bash
+# uses the matlab code provided in: https://figshare.com/articles/dataset/HCP-MMP1_0_projected_on_MNI2009a_GM_volumetric_in_NIfTI_format/3501911
+sni cp /opt/freesurfer/subjects/fsaverage/surf/lh.pial ~/res/reference/fsaverage/fsav/
+sni cp /opt/freesurfer/subjects/fsaverage/surf/rh.pial ~/res/reference/fsaverage/fsav/
+
+cd ~/res/reference/transforms/fsannot2mni/
+matlab /minimize /nosplash /nodesktop
+addpath("bigdata/soft/spm12")
+convert_fsav_to_MNI_volumetric('~/lh.nconn.fsav164.annot', '~/rh.nconn.fsav164.annot', '~/res/reference/fsaverage/fsav/', '/res/reference/mni_icbm152_nlin_asym_09c/mni_icbm152_gm_tal_nlin_asym_09c.nii', '~/nconn.horn16MNIa09c')
+```
 
 ## Misc: working with surface data in a 2D plane
 
@@ -619,6 +697,7 @@ plotting.view_surf(mesh_sub.inflated,
 ```python
 import hcp_utils as hcp
 # the HCP file s1200_sulc i.e. contains 29k for left cortex and 29k for right cortex
+# hcp.struct.cortex_left is: slice 0-29k; should only be used if original data is already in HCP-style
 s1200_sulc_L = s1200_sulc[0,hcp.struct.cortex_left]     # returns 29k version (LH excluding medial wall)
 s1200_sulc_L = hcp.left_cortex_data(s1200_sulc[0,:])    # returns 32k version
 #s1200_sulc_L = hcp.left_cortex_data(s1200_sulc[0,hcp.struct.cortex_left]) # returns 32k version
@@ -631,9 +710,41 @@ left_ctx_tseries32k = hcp.left_cortex_data(left_ctx_tseries29k;)    # returns 32
 run29k_L = run32k_L[:, hcp.vertex_info['grayl'] ]
 # if both left and right are concatenated in the run (2x32k = 64k), one can do the following:
 cortexLR = list(hcp.vertex_info['grayl']) + list(hcp.vertex_info['grayr'] + 32492)
-run59k_LR = run64k_L[:, hcp.vertex_info['grayl'] ]
+run59k_LR = run64k_L[:, cortexLR  ]
 ```
 
+## Nilearn
+
+
+### Nilearn plotting
+
+**any volume (roughly aligned to MNI?)**
+```py
+import  nibabel  as  nib
+from  nilearn  import  plotting
+fnc = "nconn_clean.horn16MNIa09c.nii.gz"
+plotting.view_img(nib.load(fnc), title="T1", threshold="75%", cmap="viridis", symmetric_cmap=0) # with MNI in background
+```
+
+**any surface**
+```py
+from  nilearn  import  plotting
+import  nibabel  as  nib
+from  matplotlib  import pyplot as  plt
+import  itertools
+
+annotfn = "{}.nconn.fsav164.annot"
+labels = {'left' : nib.freesurfer.io.read_annot(annotfn.format('lh'))[0], 'right' : nib.freesurfer.io.read_annot(annotfn.format('rh'))[0]}
+pial = {'left': "fsav/lh.pial", 'right' : "fsav/rh.pial" } # fsaverage7 ~ 164k vertices
+vmax = max(labels["left"].max(), labels["right"].max())
+
+fig, ax = plt.subplots(1,4, figsize=(19,6), subplot_kw={'projection': '3d'})
+for  n, (hemi, view) in  enumerate(list(itertools.product(['left', 'right'], ['lateral', 'medial']))):
+  plotting.plot_surf_roi(pial[hemi], roi_map=labels[hemi], cmap="viridis", hemi=hemi, view=view, bg_on_data=True, vmax=vmax, darkness=.5, axes=ax[n]);
+ 
+fig.tight_layout();
+# order: 0 ('left', 'lateral'), 1 ('left', 'medial'), 2 ('right', 'lateral'), 3 ('right', 'medial')
+```
 
 ## brainspace
 
@@ -641,9 +752,30 @@ https://github.com/MICA-MNI/BrainSpace
 
 https://brainspace.readthedocs.io/en/latest/
 
+**plot surfaces**
+```py
+import  nibabel  as  nib
+from  brainspace.datasets  import  load_conte69
+from  brainspace.plotting  import  plot_hemispheres
+surf_lh, surf_rh = load_conte69() # other standard surface meshes in FSLR32k
+nclabel4504=nib.load("nclabel4504.LR.fslr32k.dlabel.nii")
+img=plot_hemispheres(surf_lh, surf_rh, label_text=['Surface data description'], zoom=1.5, embed_nb=1, array_name=nclabel4504.get_fdata(), size=(1200, 200), color_bar=True);
+display(img)
+
+# from reduced hcp-style data (excluding the medial wall)
+import hcp_utils as hcp
+nclabel4504_32kLR = nclabel4504.get_fdata() # shape (1, 64984)
+idxs_noMW = list(hcp.vertex_info['grayl'])+list(hcp.vertex_info['grayr'] + 32492);
+nclabel4504_29kLR = nclabel4504_32kLR[0,idxs_noMW] # shape (59412,)
+nclabel4504_32kLR_noMW = hcp.cortex_data(nclabel4504_29kLR)
+img=plot_hemispheres(..., array_name = nclabel4504_32kLR_noMW , ... )
+```
+
+**reduce by parcellation/labels**
 ```python
 syt20 = nib.load("Schaefer2018_400Parcels_7Networks_order_Tian_Subcortex_S2.dlabel.nii")
-syt20_LR29k = syt20.get_fdata()[0,hcp.struct.cortex] # shape 59412 ~ 2*29k
+cortexLR = list(hcp.vertex_info['grayl']) + list(hcp.vertex_info['grayr'] + 32492) # 2x29k indices based on 32k style data
+syt20_LR29k = syt20.get_fdata()[0,cortexLR ] # shape 59412 ~ 2*29k
 
 from brainspace.utils.parcellation import reduce_by_labels, map_to_labels
 print("Number of parcels in ctx atlas: ", len(np.unique(syt20_LR29k)))
@@ -651,6 +783,51 @@ print("Number of parcels in ctx atlas: ", len(np.unique(syt20_LR29k)))
 mask = syt20_LR29k!=0; # only where the atlas is not zero
 timeseries_red = reduce_by_labels(timeseries[mask], syt20_LR29k[mask], axis=1, red_op='mean') #resutling shape: (400, 4800)
 grad=map_to_labels(timeseries_red, syt20_LR29k, mask=mask, fill=np.nan)
+```
+
+
+## surfplot (wraps around brainspace)
+
+https://surfplot.readthedocs.io/en/latest/auto_examples/plot_tutorial_04.html
+
+```python
+
+from  brainspace.plotting  import  plot_hemispheres
+from  brainspace.datasets  import  load_conte69
+surf_lh, surf_rh = load_conte69()
+
+from surfplot import Plot
+p = Plot(surf_lh, surf_rh )
+#p = Plot(lh, rh, size=(800, 200), zoom=1.2, layout='row')
+#p = Plot(lh, size=(400, 200), zoom=1.2)
+#p = Plot(lh, rh, size=(400, 200), zoom=1.2, views='lateral')
+#p = Plot(lh, rh, size=(800, 200), zoom=1.2, layout='row', mirror_views=True)
+fig = p.build()
+fig.show()
+```
+
+**add data on top**
+```py
+from brainspace.datasets import load_parcellation
+lh_parc, rh_parc = load_parcellation('schaefer')
+p.add_layer({'left': lh_parc, 'right': rh_parc}, cbar=False)
+#p.add_layer({'left': lh_parc, 'right': rh_parc}, cmap='gray', as_outline=True, cbar=False)
+```
+
+**surfaces available**
+```py
+from  brainspace.datasets  import  load_conte69
+surf_lh, surf_rh = load_conte69()
+
+from neuromaps.datasets import fetch_fslr
+surfaces = fetch_fslr() # densities of '4k', '8k', '32k', '164k'
+lh, rh = surfaces['inflated']
+
+from neuromaps.datasets import fetch_fsaverage
+surfaces = fetch_fsaverage(density='164k') # densities of {'3k', '10k', '41k', '164k'}
+lh, rh = surfaces['inflated']
+
+#more on: https://netneurolab.github.io/neuromaps/api.html#module-neuromaps.datasets
 ```
 
 ## netneurotools
