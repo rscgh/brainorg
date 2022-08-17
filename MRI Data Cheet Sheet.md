@@ -226,8 +226,59 @@ label_name_dict = {k : label_dict[k][0] for  k  in  label_dict.keys()}
 label_name_dict #=> {0: "???", 1: "L_Parcel_1", ..., 4502: "R_Parcel_2250", ...}
 ```
 
+Generic summary function:
+```python
+def print_cifti_summary(self, detailed=False):
+    cimg = self; 
+    if not isinstance(cimg, nib.cifti2.cifti2.Cifti2Image):
+        print("Something clearly went wrong, as this is not a cifti image, but you are calling a cifti-image instance method");
+        
+    print("The file contains", cimg.ndim, "dimensions.")
+    print("The data has the following shape:", cimg.shape)
 
+    print("_"*80)
+    print("The header describes the following information: (accessible via img.header())")
 
+    for n in range(cimg.ndim):
+      ax= cimg.header.get_axis(n)
+      print("\n# Axis", n, " of type", ax.__class__)
+      if isinstance(ax, nib.cifti2.cifti2_axes.SeriesAxis):
+        print("This Series axis has the size of", ax.size)
+        print("Start, Step(=TR), Unit:", ax.start, ax.step, ax.unit)
+      elif isinstance(ax, nib.cifti2.cifti2_axes.BrainModelAxis):
+        print("This BrainModelAxis contains the following structures:")
+        for idx, (name, slc, bm) in enumerate(ax.iter_structures()): print("> ", str(name), "\t\t", slc)
+      #elif isinstance(ax, nib.cifti2.cifti2_axes.LabelAxis):
+        # for n in range(len(ax.label)):
+        # print("Label dict,", n, ":")
+        #label_dict = ax.label[0]
+        #label_name_dict = {k : label_dict[k][0] for  k  in  label_dict.keys()}
+        #label_name_dict #=> {0: "???", 1: "L_Parcel_1", ..., 4502: "R_Parcel_2250", ...}
+
+    print("_"*80)
+    print("The contained data looks as follows (accessible via img.get_fdata()):\n")
+    data = cimg.get_fdata();
+    flatdata = data.flatten()
+    print("> Examples (first  10 items):", flatdata[:10]);
+    print("> Examples (random 10 items):", flatdata[np.random.randint(0, high=len(flatdata), size=10, dtype=int)]);
+    print("> Min:\t", data.min());
+    print("> Max:\t",  data.max());
+    print("> Mean:\t",  data.mean());
+    
+    if detailed:
+      vals, counts = np.unique(data, return_counts=1)
+      ind = np.argsort(counts)[::-1]
+      print("> Num of unique values: ", len(vals))
+      print("> 5 most  common values with counts:", ''.join([str(vals[ind[i]]) + " (" + str(counts[ind[i]]) + "), " for i in range(5)]))
+      print("> 5 least common values with counts:", ''.join([str(vals[ind[-1*(i+1)]]) + " (" + str(counts[ind[-1*(i+1)]]) + "), " for i in range(5)]))
+
+setattr(nib.cifti2.cifti2.Cifti2Image, "print_summary", print_cifti_summary)
+
+cimg = nib.load(fp)
+#print_cifti_summary(cimg, detailed=1)
+cimg.print_summary()
+
+```
 ### Create a new Cifti (29k vertices describing left cortex excluding medial wall)
 
 Each Cifti file needs an assocaited brain model (i.e. which areas are included in the cifti file, such as left hemisphere aka "LEFT_CORTEX", right hemisphere etc). This brain model we can take from an already existing file, such as the resting state run of an HCP subject:
