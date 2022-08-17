@@ -367,7 +367,7 @@ cimg.to_filename("data_29kLR.dlabel.nii");
 
 ### Generic loading of a parcellation (from a label cifti)
 
-
+```python
 # returns the first brain model axis of an cifti2 image object
 def get_cifti_axis_by_type(cifti2, axtype="bma" , return_idx = False):
   if axtype == "bma": axtype=nib.cifti2.cifti2_axes.BrainModelAxis;
@@ -407,7 +407,7 @@ def load_cifti_parcellation(cifti2, structure="left_cortex", verbose=0):
   if verbose: print("label_data info: shape of ", label_data.shape, "i.e.", label_data)
   if verbose: print("unqiue label_data:", len(np.unique(label_data)), "labels contained, i.e.:", np.unique(label_data)[:10])
   return label_data, label_dict;
-
+```
 
 
 ### HCP: Load resting state run cifti-files and extract (left) cortex data
