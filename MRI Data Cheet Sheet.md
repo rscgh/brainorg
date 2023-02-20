@@ -9,6 +9,7 @@ This makes mainly use of
 
 For editing of this file, use i.e. [pandao MD editor](https://pandao.github.io/editor.md/) or [stackedit](https://stackedit.io/app#)
 
+Other good resources can be found [here](https://git.fmrib.ox.ac.uk/eduff/pytreat-2018-practicals/blob/d411a5d8ffe08e609d1cc65dc06c7626f0c8f418/talks/nibabel_cifti/nibabel_cifti.md) and [as the NiBabel cheat sheet](https://nbviewer.org/github/neurohackademy/nh2020-curriculum/blob/master/we-nibabel-markiewicz/NiBabel.ipynb)
 
 ## File Types Overview
 
