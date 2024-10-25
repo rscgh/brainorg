@@ -133,7 +133,7 @@ Cifties can contain multiple brain structures (in contrast to Gifties?). Yet the
 * .dtseries.nii(.gz), usually contains a time series (such as resting state) with a shape like (1200, 91282), 1200 timepoints x 91282 svoxels7vertices; 
 * .dlabel.nii(.gz), contains a parcellation of shape (n_vertices) where the values correspond to a structure ID (i.e. id=4 could hypothetically correspond to the hippocampus). It should also somewhere contain the mapping from id (4) to label (hippocampus).
 
-Internally these should look mostly similiar. For more info check out the [Layman’s guide to working with CIFTI files](https://mandymejia.com/2015/08/10/a-laymans-guide-to-working-with-cifti-files/) by Mandy Mejia. Or the [HCP FAQ on Cifti](https://wiki.humanconnectome.org/display/PublicData/HCP+Users+FAQ)
+Internally these should look mostly similiar. For more info check out the [Layman’s guide to working with CIFTI files](https://mandymejia.com/2015/08/10/a-laymans-guide-to-working-with-cifti-files/) by Mandy Mejia. Or the [HCP FAQ on Cifti](https://wiki.humanconnectome.org/display/PublicData/HCP+Users+FAQ) and the BALSA [filetype reference](https://balsa.wustl.edu/about/fileTypes)
 
 
 ### HCP: Load resting state run and extract left cortex data
@@ -315,10 +315,76 @@ triangularis_mask = AnatLabelsData == 20;
 
 ```
 
+### Deface Gifti Metadata (removing identifying info)
 
+Not sure if thats a complete procedure:
 
+```python
+import nibabel as nib
+gimg = nib.load("/data/DetlefHallervorden2804_tag3.mask.midthickn.enc.32k_fsLR.func.gii")
+
+# if were not sure what can be done with gimg, just check what functions & vars it contains:
+for e in dir(gimg): print(e)
+'''
+__class__
+__delattr__
+...
+darrays
+...
+get_header
+get_labeltable
+get_meta
+...
+print_summary
+'''
+# print_summary sounds good, so do it
+gimg.print_summary();
+'''
+----start----
+Source filename:  None
+Number of data arrays:  1
+----
+Metadata:
+{'ParentProvenance': '/data/hcp/sub-DetlefHallervorden2804/MNINonLinear/fsaverage_LR32k/sub-DetlefHallervorden2804.L.midthickness.32k_fs_LR.surf.gii' ... }
+'''
+
+So it seems the metadata contains things we would not want to share, so do:
+
+meta_dict = meta_dict = x.get_meta().data_as_dict;
+
+persons_real_name= "DetlefHallervorden2804"
+for e in meta_dict.keys(): meta_dict[e]=meta_dict[e].replace(persons_real_name,"SJXX01")
+
+for e in meta_dict.keys(): print(e, ": ", meta_dict[e])
+'''
+AnatomicalStructurePrimary :  CortexLeft
+ParentProvenance 
+/data/hcp/sub-SJXX01/MNINonLinear/fsaverage_LR32k/sub-SJXX01.L.midthickness.32k_fs_LR.surf.gii: 
+/opt/workbench/bin_linux64/../exe_linux64/wb_command -surface-resample/data/hcp/sub-SJXX01/MNINonLinear/Native/sub-SJXX01.L.midthickness.native.surf.gii 
+/data/hcp/sub-SJXX01/MNINonLinear/Native/sub-SJXX01.L.sphere.MSMSulc.native.surf.gii 
+...
+'''
+
+# then create a new metadata object and override the old
+new_metadata = gimg.get_meta().from_dict(meta_dict)
+gimg.set_metadata(new_metadata)
+
+# check the new files summary and save it
+gimg.print_summary()
+gimg.to_filename("sub-SJXX01_tag3.mask.midthickn.enc.32k_fsLR.func.gii")
+```
+
+### Change gifti data
+
+```python
+new_gimg=gimg;
+new_gimg.darrays[0].data = new_gimg.darrays[0].data+100;
+new_gimg.to_filename("...");
+```
 
 ### Misc: working with surface data in a 2D plane
+
+
 
 
 ```python
@@ -329,7 +395,18 @@ triangularis_mask = AnatLabelsData == 20;
 
 
 
+## More Conversions
 
+### MNC (=MINC) to Nifti
+
+For that use the [freesurfer function mnc2nii](http://bic-mni.github.io/man-pages/man/mnc2nii.html):
+
+```shell
+# untested
+mnc2nii <options> <infile.mnc> <outfile.nii.gz>
+```
+
+The reverse ([nii2mnc](http://bic-mni.github.io/man-pages/man/nii2mnc)) exists too.
 
 # HCP Processing Pipeline:
 
