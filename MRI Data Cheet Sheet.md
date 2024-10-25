@@ -1,6 +1,49 @@
 # Cheet Sheet for using surface and volumetric neuroimaging data
 
-This includes broad descriptions of the most commonly used file types Nifti, Cifti and Gifti, usage of some python libraries (mostly nibabel, nilearn), the connectome workbench, FSL and rarely freesurfer and AFNI.
+This includes broad descriptions of the most commonly used file types Nifti, Cifti and Gifti, usage of some python libraries (mostly nibabel, nilearn), the connectome workbench (mostly for data from the human connectome project (HCP)), FSL and rarely freesurfer and AFNI.
+
+This makes mainly use of 
+* python (specifically [Nilearn](https://nilearn.github.io/stable/index.html "Nilearn")/[Nibabel](https://nipy.org/nibabel/ "Nibabel")), 
+* the [connectome workbench](https://humanconnectome.org/software/connectome-workbench "connectome workbench") CLI ([wb_command function reference](https://humanconnectome.org/software/workbench-command "wb_command function reference")) and 
+* [FSL](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki "FSL") ([fslmaths commands](https://mandymejia.com/fsl-maths-commands/ "fslmaths commands"))
+
+For editing of this file, use i.e. [pandao MD editor](https://pandao.github.io/editor.md/) or [stackedit](https://stackedit.io/app#)
+
+Other good resources can be found [here](https://git.fmrib.ox.ac.uk/eduff/pytreat-2018-practicals/blob/d411a5d8ffe08e609d1cc65dc06c7626f0c8f418/talks/nibabel_cifti/nibabel_cifti.md) and [as the NiBabel cheat sheet](https://nbviewer.org/github/neurohackademy/nh2020-curriculum/blob/master/we-nibabel-markiewicz/NiBabel.ipynb)
+
+## File Types Overview
+
+**Standard formats**
+* `Nifti: .nii, .nii.gz` - software like FSLeyes to view and [Reorient](https://github.com/neuroanatomy/reorient) to correct alignment)
+* `Cifti: dscalar.nii, dlabel.nii, dtseries.nii, (plabel.nii)`, contains only data, but no meshes, use HCP Conenctome Workbench
+* `Gifti data: shape.gii,  func.gii, label.gii `
+* `Gifti mesh: surf.gii`
+
+**Freesurfer formats**
+* `lh.sphere`
+* `?h.sulc` - subject's convexity data
+* `?h.smoothwm` surface
+* ...
+* `subj01_parc_masks.mgz` - volumetric parcellation?
+* `lh.XXXX.annot` - annotation/parcellation mapped to an individual (or refrence template), can also contain a color mapping, see [here](https://surfer.nmr.mgh.harvard.edu/fswiki/LabelsClutsAnnotationFiles#Annotation)
+* `XXXColorLUT.txt` - label name to RGBA color mapping (weirdly enough, it doesnt map label iDs), see [here](https://surfer.nmr.mgh.harvard.edu/fswiki/LabelsClutsAnnotationFiles#Annotation)
+* `lh.XXXX.gcs` - atlas file based on multiple individual annotations along with geometric (sulci/gyri) data that allows freesurfer automatically map this parcellations to individuals
+
+See [freesurfer parcellation overview](https://surfer.nmr.mgh.harvard.edu/fswiki/CorticalParcellation) and the related [automatic surface labelling process](https://surfer.nmr.mgh.harvard.edu/fswiki/SurfaceLabelAtlas)
+https://github.com/binarybottle/mindboggle_sidelined/blob/master/freesurfer.py
+
+See also the different freesurfer spaces in the end of this document. 
+
+**Structural connectivity related files**
+* `.bvals` - contains the diffusion weighting (b-value) for each volume
+* `.bvecs` - contains the diffusion direction (b-vector) for each volume
+* `.bvals` - subject's convexity data
+* `.trk` - [Tractogram file](https://nipy.org/nibabel/reference/nibabel.streamlines.html#nibabel.streamlines.tractogram_file.TractogramFile)
+* the following files are specific to HCPSubject/T1w/Diffusion, see [here]():
+* `data.nii.gz` [specific: HCPSubject/T1w/Diffusion] - (preprocessed diffusion time series file)
+* `nodif_brain_mask.nii.gz`  [HCP specific] - brain mask in diffusion space
+* `grad_dev.nii.gz` [HCP specific] - contains the effects of gradient nonlinearities on the bvals and bvecs for each voxel
+Further links: [Read bvals/bvecs + create a gradient table](ttps://dipy.org/documentation/1.1.1./reference/dipy.data/#dipy.data.GradientTable), [Tissue Classification for getting WM mask](https://dipy.org/documentation/1.0.0./examples_built/tissue_classification/), [csa_peaks](https://dipy.org/documentation/1.0.0./examples_built/tracking_introduction_eudx/) and [Local Streamline tracking](https://dipy.org/documentation/1.4.1./examples_built/streamline_tools/#example-streamline-tools), [Streamlines](https://nipy.org/nibabel/reference/nibabel.streamlines.html) and [Tractogram files](https://nipy.org/nibabel/reference/nibabel.streamlines.html#nibabel.streamlines.tractogram_file.TractogramFile)
 
 ## Nifti
 
@@ -34,6 +77,9 @@ new_image = nib.Nifti1Image(newdata, nimg.affine, header=nimg.header)
 new_image = nib.Nifti1Image(newdata, nimg.affine)
 nib.to_filename("path/to/newfile.nii.gz");
 
+# alternative way to create new image of same class
+new_image = nimg.__class__(newdata, nimg.affine, header=nimg.header)
+
 ```
 
 Depending on the header size, either Nifti1 or Nifti2 images can be created (?), see [here](https://stackoverflow.com/questions/44397617/change-data-type-in-numpy-and-nibabel):
@@ -45,7 +91,7 @@ else: # hdsohdr == 540
   new_image = nib.Nifti2Image(newdata, nimg.affine, header=nimg.header)
 ```
 
-### Get MNI coordinate for 
+### Get MNI coordinate for a specific voxel
 
 *Works only for nifti-images aligned with MNI space*: Apply the affine contained in the header:
 
@@ -60,16 +106,17 @@ mni_coords = [np.int_(np.round(x)) for x in apply_affine(nimg.affine, point_xyz)
 print("Point: ", point_xyz, "has MNI coordinates: ", mni_coords);
 ```
 
-This could be theoretically reversed? Maybe with 
-`point_xyz = apply_affine(np.linalg.inv(nimg.affine), mni_coords)`
-but I havent tested this yet.
+This can be reverseed using: 
+```python
+point_xyz = apply_affine(np.linalg.inv(nimg.affine), mni_coords)
+```
+but better check again.
 
 ### Get centroid for an ROI
 
 I.e. all voxels belonging to an ROI have the value 5, then one can do:
 
 ```python
-
 data= nimg = nib.load("path/to/image.nii.gz").get_fdata()
 value=5
 idx = np.array(np.where( np.round(data) == value ) ).T
@@ -80,17 +127,32 @@ centroid_round = [np.round(np.mean(idx[:,x])) for x in range(0,3)]
 ```
 
 
-## Conversion of volumetric data (in MNI) to surface data in fsaverage space
+### Conversion of volumetric data (in MNI) to surface data in fsaverage space
 
 There is multiple ways for doing so:
 * there is a paper describing a good way to do it by [Wu et al., 2018 in Neuroimage](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6239990/)
 * there is a [python library "regfusion"](https://pypi.org/project/regfusion/) with detailed usecase descriptions. This implements the Wu et al., 2018 mapping.
 * a confusing way is given on the [freesurfer website](https://surfer.nmr.mgh.harvard.edu/fswiki/CoordinateSystems)
 
+This results in either (a) cifti or gifti file(s).
 
-## HCP: Native T1 (Strutural Scan) aligned data to surface data
+### MNI aligned volumetric NIFTI -> HCP FS_LR_32k
 
+```shell
 
+#wb_command -volume-to-surface-mapping <input> <map_target_surf> <output> [-method]
+wb_command -volume-to-surface-mapping juelich_cyto_MNI152_2009C_nA.nii.gz atlases\surf_fsLR\reference\HCP_S1200\S1200.L.pial_MSMAll.32k_fs_LR.surf.gii juelich_cyto_MNI152_2009C_nA.enc.32kfslr.L.func.gii -enclosing
+
+wb_command -volume-to-surface-mapping juelich_cyto_MNI152_2009C_nA.nii.gz atlases\surf_fsLR\reference\HCP_S1200\S1200.R.pial_MSMAll.32k_fs_LR.surf.gii juelich_cyto_MNI152_2009C_nA.enc.32kfslr.R.func.gii -enclosing
+
+# -enclosing does not average voxels, so can be used i.e. for transformation of atlases
+# - trilinear uses interpolation; -cubic & -ribbon-constrained are even more complicated
+
+```
+
+### HCP: Functional Image aligned to T1 (structural scan) in subject native volumetric space -> Subject specific FS_LR_32k
+
+"Native T1 (strutural scan)"-aligned data to surface data
 ```shell
 
 # OPTIONAL:
@@ -104,7 +166,7 @@ There is multiple ways for doing so:
 # so use the fsl reorientation capability:
 ${FSLDIR}/bin/fslreorient2std volumetric_data_nativeT1algined_c.nii.gz volumetric_data_nativeT1algined_cro.nii.gz
 
-# Rigid Alignment with MNI (i.e. ration and resizing?)
+# Rigid Alignment with MNI (i.e. rotation and resizing?)
 applywarp --rel --interp=spline -i "volumetric_data_nativeT1algined_cro.nii.gz"  -r MNI152_T1_0.7mm.nii.gz --premat=/data/hcp/sub-subjectname/T1w/xfms/acpc.mat -o "volumetric_data_MNIacpc.nii.gz"
 
 # OPTIONAL:
@@ -119,8 +181,6 @@ fslmaths volumetric_data_MNIacpc.nii.gz -thr 0.6 volumetric_data_MNIacpc_clean.n
 #-trilinear might be working better in some cases and seems to be faster
 
 wb_command -volume-to-surface-mapping volumetric_data_MNIacpc_clean.nii.gz /data/hcp/sub-subjectname/MNINonLinear/fsaverage_LR32k/sub-subjectname.L.pial.32k_fs_LR.surf.gii surface_data.enc.32kfslr.func.gii -enclosing
-
-
 ```
 
 
@@ -130,13 +190,228 @@ wb_command -volume-to-surface-mapping volumetric_data_MNIacpc_clean.nii.gz /data
 Cifties can contain multiple brain structures (in contrast to Gifties?). Yet they do not contain any information about where in 3D the greyordinates (vertices) are located in, this is only contained in surf.gii files)
 
 * .dscalar.nii(.gz), usually contains one to a hand full of scalar images, such as i.e. local cortical curvature and thickness, resulting in a shape of (2,91282) ~(n_scalars, n_vertices)
-* .dtseries.nii(.gz), usually contains a time series (such as resting state) with a shape like (1200, 91282), 1200 timepoints x 91282 svoxels7vertices; 
+* .dtseries.nii(.gz), usually contains a time series (such as resting state) with a shape like (1200, 91282), 1200 timepoints x 91282 svoxels/vertices; 
 * .dlabel.nii(.gz), contains a parcellation of shape (n_vertices) where the values correspond to a structure ID (i.e. id=4 could hypothetically correspond to the hippocampus). It should also somewhere contain the mapping from id (4) to label (hippocampus).
 
 Internally these should look mostly similiar. For more info check out the [Layman’s guide to working with CIFTI files](https://mandymejia.com/2015/08/10/a-laymans-guide-to-working-with-cifti-files/) by Mandy Mejia. Or the [HCP FAQ on Cifti](https://wiki.humanconnectome.org/display/PublicData/HCP+Users+FAQ) and the BALSA [filetype reference](https://balsa.wustl.edu/about/fileTypes)
 
+This format I think was created for/by the Human connectome project (HCP; and hence examples may focus on it a bit more).
 
-### HCP: Load resting state run and extract left cortex data
+### Look at what is contained within a cifti
+
+Scalar file:
+```python
+import nibabel as nib
+cifti=nib.load(r"MNINonlinear\fsaverage_LR32k\100206.MyelinMap_BC_MSMAll.32k_fs_LR.dscalar.nii" ) 
+# data within cifti of shape (1, 64984)
+cifti.header.get_axis(0) # ScalarAxis
+bma = cifti.header.get_axis(1) # BrainModelAxis
+for idx, (name, slc, bm) in enumerate(bma.iter_structures()): print((str(name), slc))
+#('CIFTI_STRUCTURE_CORTEX_LEFT', slice(0, 29696, None))
+#('CIFTI_STRUCTURE_CORTEX_RIGHT', slice(29696, None, None))
+```
+Label file:
+```python
+c = nib.load("Schaefer2018_100Parcels_7Networks_order.dlabel.nii")
+c.shape	# (1, 59412)
+c.header.get_axis(0) # LabelAxis
+bma = c.header.get_axis(1) # BrainModelAxis
+for idx, (name, slc, bm) in enumerate(bma.iter_structures()): print((str(name), slc))
+# ('CIFTI_STRUCTURE_CORTEX_LEFT', slice(0, 32492, None))
+# ('CIFTI_STRUCTURE_CORTEX_RIGHT', slice(32492, None, None))
+c.header.get_axis(0).label #-> returns [{0 : ("???" , (1,1,1,0)), 1: ("area1",(R,G,B,A))}]
+
+# alternative
+label_dict = c.header.get_axis(0).label[0]
+label_name_dict = {k : label_dict[k][0] for  k  in  label_dict.keys()}
+label_name_dict #=> {0: "???", 1: "L_Parcel_1", ..., 4502: "R_Parcel_2250", ...}
+```
+
+Generic summary function:
+```python
+def print_cifti_summary(self, detailed=False):
+    cimg = self; 
+    if not isinstance(cimg, nib.cifti2.cifti2.Cifti2Image):
+        print("Something clearly went wrong, as this is not a cifti image, but you are calling a cifti-image instance method");
+        
+    print("The file contains", cimg.ndim, "dimensions.")
+    print("The data has the following shape:", cimg.shape)
+
+    print("_"*80)
+    print("The header describes the following information: (accessible via img.header())")
+
+    for n in range(cimg.ndim):
+      ax= cimg.header.get_axis(n)
+      print("\n# Axis", n, " of type", ax.__class__)
+      if isinstance(ax, nib.cifti2.cifti2_axes.SeriesAxis):
+        print("This Series axis has the size of", ax.size)
+        print("Start, Step(=TR), Unit:", ax.start, ax.step, ax.unit)
+      elif isinstance(ax, nib.cifti2.cifti2_axes.BrainModelAxis):
+        print("This BrainModelAxis contains the following structures:")
+        for idx, (name, slc, bm) in enumerate(ax.iter_structures()): print("> ", str(name), "\t\t", slc)
+      #elif isinstance(ax, nib.cifti2.cifti2_axes.LabelAxis):
+        # for n in range(len(ax.label)):
+        # print("Label dict,", n, ":")
+        #label_dict = ax.label[0]
+        #label_name_dict = {k : label_dict[k][0] for  k  in  label_dict.keys()}
+        #label_name_dict #=> {0: "???", 1: "L_Parcel_1", ..., 4502: "R_Parcel_2250", ...}
+
+    print("_"*80)
+    print("The contained data looks as follows (accessible via img.get_fdata()):\n")
+    data = cimg.get_fdata();
+    flatdata = data.flatten()
+    print("> Examples (first  10 items):", flatdata[:10]);
+    print("> Examples (random 10 items):", flatdata[np.random.randint(0, high=len(flatdata), size=10, dtype=int)]);
+    print("> Min:\t", data.min());
+    print("> Max:\t",  data.max());
+    print("> Mean:\t",  data.mean());
+    
+    if detailed:
+      vals, counts = np.unique(data, return_counts=1)
+      ind = np.argsort(counts)[::-1]
+      print("> Num of unique values: ", len(vals))
+      print("> 5 most  common values with counts:", ''.join([str(vals[ind[i]]) + " (" + str(counts[ind[i]]) + "), " for i in range(5)]))
+      print("> 5 least common values with counts:", ''.join([str(vals[ind[-1*(i+1)]]) + " (" + str(counts[ind[-1*(i+1)]]) + "), " for i in range(5)]))
+
+setattr(nib.cifti2.cifti2.Cifti2Image, "print_summary", print_cifti_summary)
+
+cimg = nib.load(fp)
+#print_cifti_summary(cimg, detailed=1)
+cimg.print_summary()
+
+```
+### Create a new Cifti (29k vertices describing left cortex excluding medial wall)
+
+Each Cifti file needs an assocaited brain model (i.e. which areas are included in the cifti file, such as left hemisphere aka "LEFT_CORTEX", right hemisphere etc). This brain model we can take from an already existing file, such as the resting state run of an HCP subject:
+
+```python
+resting_state_run = "/data/hcp/sub-100307/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR_Atlas_hp2000_clean.dtseries.nii"
+img = nib.load(resting_state_run)
+
+# extract brain model from file
+# here we just take the left hemisphere. the brain models used in the HCP are special as they exclude the medial wall
+# which reduces the number of greyordinates per hemisphere from 32492 to 29696
+
+left_cortex_excluding_medial_wall = list(img.header.matrix._mims[1].brain_models)[0].vertex_indices._indices
+
+# create a dummy array for the greyvoxel data, and only set the vertices that are not part of the medial wall to 1
+mask = np.zeros((32492)); # the 32k resolution is standard; there is also higher ~ 164k?
+np.put(mask, left_cortex_excluding_medial_wall, 1)
+# create a new brain model with only the left cortex exluding medial wall
+bm_left = nib.cifti2.BrainModelAxis.from_mask(mask, "LEFT_CORTEX")
+```
+
+Now we can finally create the actual image using this brain model. Multiple scalar images can be saved in a single cifti (i.e. curvature and cortical thickness, distrubution of different receptor types). Each of the scalar images needs a title:
+
+```python
+data = np.zeros((2, 29696)); # (n_scalars, n_vertices), for the current brainmodel n_vertices = 29696
+# fill in / manipulate image data ...
+
+dsnames = ["Curvature", "Thickness"];
+cimg = nib.Cifti2Image(data, nib.cifti2.Cifti2Header.from_axes((nib.cifti2.ScalarAxis(dsnames), bm_left)))
+# optionally save it to a file
+cimg.to_filename("path/to/new/file.dscalar.nii(.gz)");
+```
+
+### Create a new scalar cifti (32k for left cortex, with medial wall, untested)
+can be used on top of fsLR32k
+
+```python
+# create a dummy array for the greyvoxel data for the left hemisphere in 32k space, all set to one 1
+mask = np.ones((32492));
+# create a new brain model with only the left cortex
+bm_left = nib.cifti2.BrainModelAxis.from_mask(mask, "LEFT_CORTEX")
+data = np.zeros((2, 32492)); # (n_scalars, n_vertices), for the current brainmodel n_vertices = 32492
+# fill in / manipulate image data ...
+dsnames = ["Curvature", "Thickness"];
+cimg = nib.Cifti2Image(data, nib.cifti2.Cifti2Header.from_axes((nib.cifti2.ScalarAxis(dsnames), bm_left)))
+```
+
+### Create a new scalar cifti (29k vertices for each left & right cortex)
+medial wall is beeing excluded again, can be used on top of fsLR32k
+```python
+# mask out the medial wall on each side individually (using hcp-utils this time)
+import hcp-utils as hcp
+mask_l = np.zeros((32492)); np.put(mask_l, hcp.vertex_info['grayl'], 1)
+mask_r = np.zeros((32492)); np.put(mask_r, hcp.vertex_info['grayr'], 1)
+
+# and create the brain axes that exclude medial wall stuff
+bma_left = nib.cifti2.BrainModelAxis.from_mask(mask_l, "LEFT_CORTEX")
+bma_right = nib.cifti2.BrainModelAxis.from_mask(mask_r, "RIGHT_CORTEX")
+bma_corticesLR = bma_left + bma_right
+print(bma_corticesLR.nvertices) # {'CIFTI_STRUCTURE_CORTEX_LEFT': 32492, 'CIFTI_STRUCTURE_CORTEX_RIGHT': 32492}
+for idx, (name, slc, bm) in enumerate(bma_corticesLR.iter_structures()):
+    print((str(name), slc))
+#('CIFTI_STRUCTURE_CORTEX_LEFT', slice(0, 29696, None))
+#('CIFTI_STRUCTURE_CORTEX_RIGHT', slice(29696, None, None))
+```
+
+```python
+caxes= (nib.cifti2.ScalarAxis(["MyelinBC_MSMAII"]), bma_corticesLR);
+cheader=nib.cifti2.Cifti2Header.from_axes(caxes);
+cimg = nib.Cifti2Image(myelin_data59k_LR , cheader)
+```
+
+### Create a new label cifti (29k vertices for each left & right cortex)
+
+```python
+# Create the Label axis with 3 'areas'
+new_label_dict = {0 : ("unassigned" , (1,1,1,0)), 1: ("area1",(R,G,B,A)), 2: ("area2",(1,0.3,0.3,1)), ...}
+lax = nib.cifti2.cifti2_axes.LabelAxis(["parcels"], new_label_dict)
+
+# create the header and the cifti
+cheader=nib.cifti2.Cifti2Header.from_axes((lax, bma_corticesLR));
+# data_29kLR of shape (,59k) -> needs to be (1, 59k)
+cimg = nib.Cifti2Image(np.expand_dims(data_29kLR, axis=0), cheader)
+cimg.to_filename("data_29kLR.dlabel.nii");
+```
+
+### Generic loading of a parcellation (from a label cifti)
+
+```python
+# returns the first brain model axis of an cifti2 image object
+def get_cifti_axis_by_type(cifti2, axtype="bma" , return_idx = False):
+  if axtype == "bma": axtype=nib.cifti2.cifti2_axes.BrainModelAxis;
+  if axtype == "label": axtype = nib.cifti2.cifti2_axes.LabelAxis;
+  for i in range(cifti2.header.number_of_mapped_indices):
+    x = cifti2.header.get_axis(i).__class__ is axtype;
+    if x: return (i, cifti2.header.get_axis(i)) if return_idx else cifti2.header.get_axis(i)
+
+# get info about the desire structure from a cifti2 brain model axis
+def get_struct_from_cifti2bma(bma, structure="left_cortex", return_idx=0):
+  struc = bma.to_cifti_brain_structure_name(structure) # i.e. "CIFTI_STRUCTURE_CORTEX_LEFT"
+  for x in bma.iter_structures():
+    if x[0]==struc: 
+      return (i, x) if return_idx else x   
+
+def load_cifti_parcellation(cifti2, structure="left_cortex", verbose=0):
+  if isinstance(cifti2, (str, os.PathLike)): cifti2 = nib.load(cifti2);
+  if not isinstance(cifti2, nib.cifti2.Cifti2Image):
+    raise Exception("Parcellation provided is not a cifit2 file nor a filename pointing to one.")
+
+  if verbose: print("cifti_shape:", cifti2.shape)
+  bma_idx, bma = get_cifti_axis_by_type(cifti2, axtype="bma", return_idx=1)
+  if verbose: print("BMA:", bma_idx, bma)
+  c_slice = get_struct_from_cifti2bma(bma, structure=structure)[1]
+  if verbose: print("slice for strcuture:", structure, c_slice)
+  lba_idx, lba = get_cifti_axis_by_type(cifti2, axtype="label", return_idx=1)
+  # get the dictionary that maps integer labels to names
+  labels = lba.label.item() # potentially includes labels for both hemispheres
+  label_dict = {key: labels[key][0] for key in labels.keys()}
+  if verbose: print("label dict info:", len(label_dict) , "items contained, first 10:", {k : label_dict[k] for k in list(label_dict.keys())[:10]})
+  # get the parcellation data, irrespective of axis order
+  ndim = len(cifti2.shape)
+  a = {lba_idx:0, bma_idx: c_slice}
+  idxs = [a[x] for x in range(ndim)]
+  #label_data = cifti2.get_fdata()[idxs]
+  label_data = cifti2.get_fdata()[tuple(idxs)]
+  if verbose: print("label_data info: shape of ", label_data.shape, "i.e.", label_data)
+  if verbose: print("unqiue label_data:", len(np.unique(label_data)), "labels contained, i.e.:", np.unique(label_data)[:10])
+  return label_data, label_dict;
+```
+
+
+### HCP: Load resting state run cifti-files and extract (left) cortex data
 
 ```python
 resting_state_run = "/data/hcp/sub-100307/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR_Atlas_hp2000_clean.dtseries.nii"
@@ -154,10 +429,31 @@ list(img.header.matrix._mims[1].brain_models)[structure_index].index_count      
 
 This resting state run is aligned by default to the FS_LR32k space. That kinda means each hemisphere is formed by ~32k greyordinates/vertices. But here we only have 29696 vertices for the left hemisphere. This is because the medial wall was excluded (as it is nessesary for the 3D mesh to exist, but does not contain any grey matter in reality). Exluding it saves storage space.
 
-To get the resting state data for the LH only, simply do:
+To get the resting state data from HCP files for the LH only, simply do:
 
 ```python
-left_ctx_tseries = fullbrain_tseries[:, 0: 0+29696];
+left_ctx_tseries29k; = fullbrain_tseries29k[:, 0: 0+29696];
+```
+
+Or more generally, for data in the HCP format (fsLR32k excluding medial wall, so actually having more like 29k), the `hcp-utils` toolbox can be used
+```python
+left_ctx_tseries = fullbrain_tseries[:, hcp.struct.cortex_left ];
+# for non-HCP files that have 32k per hemisphere, do:
+run29k_L = run32k_L[:, hcp.vertex_info['grayl'] ]
+# if both left and right are concatenated in the run (2x32k = 64k), one can do the following:
+cortexLR = list(hcp.vertex_info['grayl']) + list(hcp.vertex_info['grayr'] + 32492)
+run59k_LR = run64k_L[:, hcp.vertex_info['grayl'] ]
+```
+
+For displaying on 32k mesh files of i.e. the cortical surface, we need to project onto the relevant vertices in this 32k space (others are left at 0):
+```python
+# to project back onto 32k 
+left_cortex_excluding_medial_wall = list(img.header.matrix._mims[1].brain_models)[0].vertex_indices._indices
+left_ctx_tseries32k = np.zeros((32492));
+left_ctx_tseries32k[left_cortex_excluding_medial_wall] = left_ctx_tseries29k;
+
+# to project back onto 32k using hcp-utils
+left_ctx_tseries32k = hcp.left_cortex_data(left_ctx_tseries29k;)    # returns 32k version
 ```
 
 The full HCP cifti greyordinate data composition looks like:
@@ -189,47 +485,10 @@ The full HCP cifti greyordinate data composition looks like:
 
 This information was taken from a [script](https://github.com/NeuroanatomyAndConnectivity/hcp_corr) by [Şeyma Bayrak](https://github.com/sheyma).
 
-### Create a new Cifti (left cortex excluding medial wall)
 
-Each Cifti file needs an assocaited brain model (i.e. which areas are included in the cifti file, such as left hemisphere aka "LEFT_CORTEX", right hemisphere etc). This brain model we can take from an already existing file, such as the resting state run of an HCP subject:
+### Get outline of a surface ROI
 
-```python
-import nibabel as nib
-
-resting_state_run = "/data/hcp/sub-100307/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR_Atlas_hp2000_clean.dtseries.nii"
-img = nib.load(resting_state_run)
-
-# extract brain model from file
-# here we just take the left hemisphere. the brain models used in the HCP are special as they exclude the medial wall
-# which reduces the number of greyordinates per hemisphere from 32492 to 29696
-
-left_cortex_excluding_medial_wall = list(img.header.matrix._mims[1].brain_models)[0].vertex_indices._indices
-
-# create a dummy array for the greyvoxel data, and only set the vertices that are not part of the medial wall to 1
-mask = np.zeros((32492)); 
-np.put(mask, left_cortex_excluding_medial_wall, 1)
-
-# create a new brain model with only the left cortex exluding medial wall
-bm_left = nib.cifti2.BrainModelAxis.from_mask(mask, "LEFT_CORTEX")
-```
-
-Now we can finally create the actual image using this brain model. Multiple scalar images can be saved in a single cifti (i.e. curvature and cortical thickness, distrubution of different receptor types). Each of the scalar images needs a title:
-
-```python
-data = np.zeros(()); # (n_scalars, n_vertices), for the current brainmodel n_vertices = 29696
-# fill in / manipulate image data ...
-
-dsnames = ["Curvature", "Thickness"];
-cimg = nib.Cifti2Image(data, nib.cifti2.Cifti2Header.from_axes((nib.cifti2.ScalarAxis(dsnames), bm_leftown)))
-
-# optionally save it to a file
-cimg.to_filename("path/to/new/file.dscalar.nii(.gz)");
-```
-
-
-## get outline of a surface ROI
-
-Dilate the original image (OI) to get (D). Erode original image to get (E). The output/outline image (OUT) equals then D-E. This requires the connectome workbench cli to be installed, and access to the sphere-ical surf.gii (containing postion and size of vertices in 3D) in the same surface space as the data (here: freesurfer_LR32k / fslr32k / 32k_fs_LR).
+Dilate the original image (OI) to get (D). Erode original image to get (E). The output/outline image (OUT) equals then D-E. This requires the connectome workbench cli to be installed, and access to the sphere-ical surf.gii (containing postion and size of vertices in 3D) in the same surface space as the data (here: freesurfer_LR32k / fslr32k / 32k_fs_LR). Gii/Gifti files are described in the next big section.
 
 ```shell
 
@@ -252,36 +511,113 @@ wb_command -cifti-separate Q1-Q6_RelatedParcellation210.R.CorticalAreas_dil_Colo
 
 This uses the [connectome workbench cli](). Example taken from Kathryn Mills Figshare Post [HCP-MMP1.0 projected on fsaverage](https://figshare.com/articles/dataset/HCP-MMP1_0_projected_on_fsaverage/3498446).
 
+### Combine Gifti into Cifti
 
+```shell
 
+#works similiarly both labels and func: (R.label.gii, L.label.gii) -> (dlabel.nii) and (R.func.gii, L.func.gii) -> (dscalar.nii)
+# wb_command -cifti-create-dense-scalar <output> [-part <part.gifti>]
+wb_command -cifti-create-dense-scalar juelich_atlas_v29.maxprob.enc.32kfslr.LR.dscalar.nii -left-metric juelich_atlas_v29.maxprob.enc.32kfslr.L.func.gii -right-metric juelich_atlas_v29.enc.32kfslr.R.func.gii
 
+# wb_command -cifti-create-label <output> [-part <part.gifti>]
+wb_command -cifti-create-label juelich_atlas_v29.maxprob.enc.32kfslr.LR.dlabel.nii -left-label juelich_atlas_v29.maxprob.enc.32kfslr.L.label.gii -right-label juelich_atlas_v29.enc.32kfslr.R.label.gii
+
+# ... and timeseries: -cifti-create-dense-timeseries
+```
+* create label needs a label mapping (`gimg.labeltable.labels`) in both of the metric (`*.label.gii`) files, as only those parcels are included in the combined image that are described in the mapping
 
 ## Gifti
 
 
-* `.surf.gii` files provide the 3D brain mesh/object backbone. Contains the mapping from greyordinate vertex to its location in 3D.
-* `shape.gii` or `func.gii` contain actual data, such as cortical thickness etc. (similiar to what can be contained in cifti files?)
+* `.surf.gii` files (also called `Geometry` or `surface` files) provide the 3D brain mesh/object backbone. Contains the mapping from greyordinate vertex to its location in 3D. They are also referred to as 
+* `shape.gii` or `func.gii` (also called `metric` files) contain actual data, such as cortical thickness or functional activations etc. (similiar to what can be contained in cifti files?). func is usually used for multi-timepoint data 
+* `label.gii` contain integer data, indicating the parcel each vertex belongs to; + a mapping from these integer values to parcel labels (a name and a color)
+
+
+Notably, other software may put data arrays (the equivalent of a metric file) into the same file as the geometry information. The connectome workbench doesnt support this.
 
 For more info, check the posts by [Emma Robinson on Gifti/HCP surface files](https://emmarobinson01.com/2016/02/10/unofficial-guide-to-the-hcp-surface-file-formats/) and both posts by Joset (Jo) A. Etzel on [NIfTI, CIFTI, GIFTI in the HCP and Workbench](http://mvpa.blogspot.com/2014/03/nifti-cifti-gifti-in-hcp-and-workbench.html) and on [Conversion from Volumetric to Surface](https://mvpa.blogspot.com/2018/02/connectome-workbench-making-surface.html).
 
 
+### Look at what is contained within a cifti
+
+```python 
+import nibabel as nib
+src = f"nconn.left.fsav164.label.gii"
+gimg=nib.load(src)
+gimg.print_summary()
+
+leftd = gii.darrays[0].data
+gimg.labeltable.labels
+gimg.get_labeltable().labels
+```
+
+### Create a new Gifti 
+//(29k vertices describing left cortex excluding medial wall)
+
+
+
 ### Convert annoations between surface data types
 
+*From gifti to cifti (within FS_LR32k)* 
+```shell
+# use cifti-create functions: -cifti-create-dense-timeseries, -cifti-create-label
+# see also last sections of CIFTI (Separate Cifti files into gifti / Combine Gifti into Cifti)
+wb_command -cifti-create-dense-scalar juelich_atlas_v29.maxprob.enc.32kfslr.LR.dscalar.nii -left-label juelich_atlas_v29.maxprob.enc.32kfslr.L.func.gii -right-label juelich_atlas_v29.enc.32kfslr.R.func.gii
+```
 
 *From cifti to gifti (within FS_LR32k)* 
 ```shell
 wb_command -cifti-separate Q1-Q6_RelatedParcellation210.L.CorticalAreas_dil_Colors.32k_fs_LR.dlabel.nii COLUMN -label CORTEX_LEFT Q1-Q6_RelatedParcellation210.L.CorticalAreas_dil_Colors.32k_fs_LR.label.gii
 ```
 
-*From FS_LR32k gifti to fsaverage164 gifti*
+*From FS_LR32k gifti to fsaverage164 gifti* [[fs_L-to-fs_LR template]](https://github.com/Washington-University/HCPpipelines/blob/master/global/templates/standard_mesh_atlases/fs_L/fs_L-to-fs_LR_fsaverage.L_LR.spherical_std.164k_fs_L.surf.gii "[fs_L-to-fs_LR template]")
 ```shell
+wb_command -label-resample <label-in> <current-sphere> <new-sphere> <method> <label-out>
 wb_command -label-resample Q1-Q6_RelatedParcellation210.L.CorticalAreas_dil_Colors.32k_fs_LR.label.gii L.sphere.32k_fs_LR.surf.gii fs_L-to-fs_LR_fsaverage.L_LR.spherical_std.164k_fs_L.surf.gii BARYCENTRIC left.fsaverage164.label.gii
+
+# "The ADAP_BARY_AREA method is recommended for label data, because it should be better at resolving vertices that are near multiple labels, or in case of downsampling"
+wb_command -label-resample Q1-Q6_RelatedParcellation210.L.CorticalAreas_dil_Colors.32k_fs_LR.label.gii L.sphere.32k_fs_LR.surf.gii fs_L-to-fs_LR_fsaverage.L_LR.spherical_std.164k_fs_L.surf.gii ADAP_BARY_AREA left.fsaverage164.label.gii
 ```
+
+Related functions are [`-surface-resample`](https://www.humanconnectome.org/software/workbench-command/-surface-resample) and [`-metric-resample`](https://www.humanconnectome.org/software/workbench-command/-metric-resample) for the two other respective gifti file types.
 
 *From fsaverage164 gifti to fsaverage(164?) .annot-file*
 ```shell
 mris_convert --annot left.fsaverage164.label.gii fs_L-to-fs_LR_fsaverage.L_LR.spherical_std.164k_fs_L.surf.gii lh.HCP-MMP1.annot
 ```
+sometimes the latter approach can lead to problems (i.e. due to repeating color values?), so conversion can also be done manually:
+```python
+gimg = nib.load("nconn.L.fsav164.label.gii")
+max_label_value = gimg.darrays[0].data.max();
+
+existing_labels=[];
+fsctab = np.zeros((max_label_value+1, 5), int) # one entry for each potential label
+fsnames =["Excluded"+str(x) for  x  in  range(max_label_value+1)] # initialize names for all potential labels
+for  n, l  in  enumerate(gimg.labeltable.labels):
+  if  not(l.key in  gimg.darrays[0].data): continue	# dont add it the annotation of the current parcel id if its not even contained in the source image ...
+  fst = [int(x* 255) for  x  in  l.rgba[:3]] + [0, 0] # transparency of 0, and last entry will be filled later
+  freesurfer_color_based_id = nib.freesurfer.io._pack_rgb(np.array(fst[:3]))[0];
+  # make sure that no color value repreats (as this is used for mapping within freesurfer)
+	while  l.key!=0  and  freesurfer_color_based_id  in  existing_labels:
+		print("Detected existing label; change the color for label: ", l.key)
+		fst = list(np.random.randint(0,255,3))+ [0, 0]
+		freesurfer_color_based_id = nib.freesurfer.io._pack_rgb(np.array(fst[:3]))[0];
+		
+	existing_labels = existing_labels + [freesurfer_color_based_id];
+	fsnames[l.key] = l.label
+	fsctab[l.key,:] = np.array(fst)
+
+# now actually add the freesurfer_color_based_id's to the color table (this could have been done earlier already)
+fsctab = np.hstack((fsctab[:, :4], nib.freesurfer.io._pack_rgb(fsctab[:, :3])))
+fslabels = gimg.darrays[0].data;
+nib.freesurfer.io.write_annot("left.nconn.fsav164.annot", fslabels, fsctab, fsnames, fill_ctab=False)
+
+# Quality control: make sure we get the same labels after transforming, saving and reading:
+res_labels, res_ctab, res_names = nib.freesurfer.io.read_annot("left.nconn.fsav164.annot");
+assert  np.all(res_labels== gimg.darrays[0].data)
+```
+
 
 Last three examples taken from Kathryn Mills Figshare Post [HCP-MMP1.0 projected on fsaverage](https://figshare.com/articles/dataset/HCP-MMP1_0_projected_on_fsaverage/3498446).
 
@@ -289,6 +625,85 @@ Last three examples taken from Kathryn Mills Figshare Post [HCP-MMP1.0 projected
 ```shell
 # uses Freesurfer mris_convert
 mris_convert fsaverage6-rh.label fsaverage6-rh.label.gii 
+```
+
+
+### Add annotations to a func.gii (transform func.gii -> label.gii)
+
+```python
+# load unannotated (functional) gifti (i.e. resultung from a conversion from volmMNI -> fsLR32k gifti)
+gimg = nib.load(r"JULICH_BRAIN_CYTO_29_MNI152_2009C_nA.maxprob.enc.32kfslr.L.func.gii")
+
+# look at the already existing labels:
+len(gimg.labeltable.labels) #->1 (labels is a list containing only one element here)
+gimg.labeltable.labels[0].to_xml()
+#> <Label Key="0" Red="1.0" Green="1.0" Blue="1.0" Alpha="0.0">???</Label>
+# this basically indicates all voxels with value 0 are not assigned to any area
+
+# labels for indices are extracted from somewhere or manually assigned:
+# indices,labels = (list<int>, list<string>) 
+
+for (idx,label) in zip(indices,labels): print(str(idx) +": " + label)
+"""
+1: Frontal-to-Temporal-I (GapMap) left
+2: Frontal-to-Temporal-I (GapMap) right
+3: Ch 123 (Basal Forebrain) left
+4: Ch 123 (Basal Forebrain) right
+"""
+
+for (idx,label) in zip(indices,labels):
+  r,g,b = list(np.random.rand(3).round(2))		 # create some randome color for the annotation
+  l = nib.gifti.gifti.GiftiLabel(idx, r,g,b,1)			# create a GiftiLabel for the index (i.e. 3)
+  l.label = label;												 # actually assign a name/label to the parcel, i.e. "Ch 123 (Basal Forebrain) left"
+  gimg.labeltable.labels = gimg.labeltable.labels + [l]		# extend the existing labels in for the image
+
+# now save the gifti as .label.gii
+nib.save(gimg,"JULICH_BRAIN_CYTO_29_MNI152_2009C_nA.maxprob.enc.32kfslr.L.label.gii") 
+```
+
+
+### Create a gifti (.label.gii) from scratch (or using an annot file)
+
+```python
+import nibabel as nib
+
+annotfn   = r"\lausanne2018_fsaverage\lh.lausanne2008.scale1.annot"  
+giifn     = r"\lausanne2018_fsaverage\lh.lausanne2008.scale1.gii"  
+label_out = r"lausanne08.sc1.fslr32k.L.label.gii"  
+
+## load annot file and convert directly to gifti  
+fslabels, fsctab, fsnames = nib.freesurfer.io.read_annot(annotfn)  
+#fslabels: 163842 labeled voxels in L, i.e.: [10 18  8  7 10 17 23 20  0  1] (35 unique labels)
+#fsctab if of length 35, with fsctab[0] beeing i.e. [250 250 250 0 16448250] (RGBT+)
+#fsnames (len of 35), i.e.: [b'unknown', b'lateralorbitofrontal', b'parsorbitalis']
+
+# usually a gifti describes a single anatomical strcture
+# this has to be given as metadata, as otherwise i.e. the HCP workbench doesnt know how to place the data onto a mesh 
+gmeta =  nib.gifti.GiftiMetaData(nib.gifti.GiftiNVPairs("AnatomicalStructurePrimary", "CortexLeft"))  
+# data should be the same size and order of the vertices contained within the relevant surface mesh (here: the annot file described the left hemisphere of fasaverage(7) which has 164k vertices (163842)
+ga = nib.gifti.GiftiDataArray(data=fslabels, intent="NIFTI_INTENT_NORMAL", datatype="NIFTI_TYPE_INT32");  # dtpe can also be *_FLOAT32 (=default?)
+
+# for .label.gii files we should also provide a lable table (this can also aparrently contain unassigned labels; these are merged when a cifti is created from two hemisphere giftis
+lt = nib.gifti.GiftiLabelTable();  
+for i in range(len(fsnames)):  
+  r,g,b = np.array(fsctab[i, :3])/255	# colors should be in range [0, 1]  
+  l = nib.gifti.gifti.GiftiLabel(i, r,g,b,1) # create a GiftiLabel for the index (i.e. 3)  
+  l.label = fsnames[i].decode("utf-8"); # actually assign a name/label to the parcel, i.e. "Ch 123 (Basal Forebrain) left"  
+  lt.labels = lt.labels + [l]    # extend the existing labels in for the image  
+  
+# finally create and save the gifti
+g = nib.gifti.GiftiImage(labeltable=lt, darrays=[ga], meta=gmeta)  
+g.to_filename(giifn)
+```
+
+```python
+# do the other hemisphere too ...
+
+# optionally join the two resulting fsLR32k .gii files again to a joint cifti (.dlabel.nii)  
+labelL = os.path.join(adir, "fsLR32k", f"lausanne08.sc{scale}.fslr32k.L.label.gii")  
+labelR = os.path.join(adir, "fsLR32k", f"lausanne08.sc{scale}.fslr32k.R.label.gii")  
+cmd = f"wb_command -cifti-create-label {out_cifti} -left-label {labelL} -right-label {labelR}"
+
 ```
 
 ### Get an ROI from a Gifti parcellation
@@ -300,7 +715,7 @@ In the HCP data a parcellation is i.e. given for each subject under:
 ```python
 import nibabel as nib
 
-nib.load(r"/data/hcp/hcp-subjectname/MNINonLinear/fsaverage_LR32k/subjectname.L.aparc.32k_fs_LR.label.gii")
+AnatLabels = nib.load(r"/data/hcp/hcp-subjectname/MNINonLinear/fsaverage_LR32k/subjectname.L.aparc.32k_fs_LR.label.gii")
 AnatLabelsData= AnatLabels.darrays[0].data
 # -> array([10, 29, 24, ..., 15, 15, 15] of shape (32492,)
 
@@ -312,7 +727,6 @@ AnatLabels.get_labeltable().labels[20].label
 #-> u'L_parstriangularis'
 
 triangularis_mask = AnatLabelsData == 20;
-
 ```
 
 ### Deface Gifti Metadata (removing identifying info)
@@ -382,7 +796,35 @@ new_gimg.darrays[0].data = new_gimg.darrays[0].data+100;
 new_gimg.to_filename("...");
 ```
 
-### Misc: working with surface data in a 2D plane
+## Freesurfer Files
+### Annot files
+
+```py
+annotLfn = f"lh.nconn.fsav164.annot"
+x = nib.freesurfer.io.read_annot(annotLfn)
+annot_left_label_ids, annot_left_fs_color_table, annot_left_label_names = x; 
+#annot_left_label_ids   => [2714, 3334, 3550, 4337,...]
+#annot_left_fs_color_table => [[250 250 250 0 16448250], ...] #(RGBT+)
+# this color table is usually in order of the actual label ids (as returned in annot_label_ids):
+#freesurfer_color_based_parcel_id = ctab[:,-1][actual_parcel_id]
+#annot_left_label_names => [b'???', b'LabelName1', b'LabelName2', b'LabelName3', ...]
+# fsnames has the same length as the color table, first entry corresponds to label with the value of 0
+```
+
+** fsaverage to volumetric**
+
+```bash
+# uses the matlab code provided in: https://figshare.com/articles/dataset/HCP-MMP1_0_projected_on_MNI2009a_GM_volumetric_in_NIfTI_format/3501911
+sni cp /opt/freesurfer/subjects/fsaverage/surf/lh.pial ~/res/reference/fsaverage/fsav/
+sni cp /opt/freesurfer/subjects/fsaverage/surf/rh.pial ~/res/reference/fsaverage/fsav/
+
+cd ~/res/reference/transforms/fsannot2mni/
+matlab /minimize /nosplash /nodesktop
+addpath("bigdata/soft/spm12")
+convert_fsav_to_MNI_volumetric('~/lh.nconn.fsav164.annot', '~/rh.nconn.fsav164.annot', '~/res/reference/fsaverage/fsav/', '/res/reference/mni_icbm152_nlin_asym_09c/mni_icbm152_gm_tal_nlin_asym_09c.nii', '~/nconn.horn16MNIa09c')
+```
+
+## Misc: working with surface data in a 2D plane
 
 
 
@@ -392,7 +834,239 @@ new_gimg.to_filename("...");
 
 ```
 
+<br/><br/>
 
+# Toolboxes
+
+## hcp-utils
+
+https://rmldj.github.io/hcp-utils/
+
+```python
+!pip install hcp_utils
+import hcp_utils as hcp
+img = nib.load('path/to/fMRI_data_file.dtseries.nii')
+X = img.get_fdata()
+X.shape     # e.g. (700, 91282)
+X_hipL = X[:, hcp.struct.hippocampus_left]
+X_hipL.shape    # (700, 764)
+
+Xp = hcp.parcellate(Xn, hcp.yeo7)
+Xp.shape    # (700, 7)
+plotting.view_surf(mesh_sub.inflated, 
+    hcp.cortex_data(hcp.unparcellate(Xp[29], hcp.yeo7)), 
+    threshold=0.1, bg_map=mesh_sub.sulc)
+```
+
+```python
+import hcp_utils as hcp
+# the HCP file s1200_sulc i.e. contains 29k for left cortex and 29k for right cortex
+# hcp.struct.cortex_left is: slice 0-29k; should only be used if original data is already in HCP-style
+s1200_sulc_L = s1200_sulc[0,hcp.struct.cortex_left]     # returns 29k version (LH excluding medial wall)
+s1200_sulc_L = hcp.left_cortex_data(s1200_sulc[0,:])    # returns 32k version
+#s1200_sulc_L = hcp.left_cortex_data(s1200_sulc[0,hcp.struct.cortex_left]) # returns 32k version
+```
+
+```python
+# to project back onto 32k using hcp-utils
+left_ctx_tseries32k = hcp.left_cortex_data(left_ctx_tseries29k;)    # returns 32k version
+# for non-HCP files that have 32k per hemisphere, do:
+run29k_L = run32k_L[:, hcp.vertex_info['grayl'] ]
+# if both left and right are concatenated in the run (2x32k = 64k), one can do the following:
+cortexLR = list(hcp.vertex_info['grayl']) + list(hcp.vertex_info['grayr'] + 32492)
+run59k_LR = run64k_L[:, cortexLR  ]
+```
+
+## Nilearn
+
+
+### Nilearn plotting
+
+**any volume (roughly aligned to MNI?)**
+```py
+import  nibabel  as  nib
+from  nilearn  import  plotting
+fnc = "nconn_clean.horn16MNIa09c.nii.gz"
+plotting.view_img(nib.load(fnc), title="T1", threshold="75%", cmap="viridis", symmetric_cmap=0) # with MNI in background
+```
+
+**any surface**
+```py
+from  nilearn  import  plotting
+import  nibabel  as  nib
+from  matplotlib  import pyplot as  plt
+import  itertools
+
+annotfn = "{}.nconn.fsav164.annot"
+labels = {'left' : nib.freesurfer.io.read_annot(annotfn.format('lh'))[0], 'right' : nib.freesurfer.io.read_annot(annotfn.format('rh'))[0]}
+pial = {'left': "fsav/lh.pial", 'right' : "fsav/rh.pial" } # fsaverage7 ~ 164k vertices
+vmax = max(labels["left"].max(), labels["right"].max())
+
+fig, ax = plt.subplots(1,4, figsize=(19,6), subplot_kw={'projection': '3d'})
+for  n, (hemi, view) in  enumerate(list(itertools.product(['left', 'right'], ['lateral', 'medial']))):
+  plotting.plot_surf_roi(pial[hemi], roi_map=labels[hemi], cmap="viridis", hemi=hemi, view=view, bg_on_data=True, vmax=vmax, darkness=.5, axes=ax[n]);
+ 
+fig.tight_layout();
+# order: 0 ('left', 'lateral'), 1 ('left', 'medial'), 2 ('right', 'lateral'), 3 ('right', 'medial')
+```
+
+## brainspace
+
+https://github.com/MICA-MNI/BrainSpace
+
+https://brainspace.readthedocs.io/en/latest/
+
+**plot surfaces**
+```py
+import  nibabel  as  nib
+from  brainspace.datasets  import  load_conte69
+from  brainspace.plotting  import  plot_hemispheres
+surf_lh, surf_rh = load_conte69() # other standard surface meshes in FSLR32k
+nclabel4504=nib.load("nclabel4504.LR.fslr32k.dlabel.nii")
+img=plot_hemispheres(surf_lh, surf_rh, label_text=['Surface data description'], zoom=1.5, embed_nb=1, array_name=nclabel4504.get_fdata(), size=(1200, 200), color_bar=True);
+display(img)
+
+# from reduced hcp-style data (excluding the medial wall)
+import hcp_utils as hcp
+nclabel4504_32kLR = nclabel4504.get_fdata() # shape (1, 64984)
+idxs_noMW = list(hcp.vertex_info['grayl'])+list(hcp.vertex_info['grayr'] + 32492);
+nclabel4504_29kLR = nclabel4504_32kLR[0,idxs_noMW] # shape (59412,)
+nclabel4504_32kLR_noMW = hcp.cortex_data(nclabel4504_29kLR)
+img=plot_hemispheres(..., array_name = nclabel4504_32kLR_noMW , ... )
+```
+
+**reduce by parcellation/labels**
+```python
+syt20 = nib.load("Schaefer2018_400Parcels_7Networks_order_Tian_Subcortex_S2.dlabel.nii")
+cortexLR = list(hcp.vertex_info['grayl']) + list(hcp.vertex_info['grayr'] + 32492) # 2x29k indices based on 32k style data
+syt20_LR29k = syt20.get_fdata()[0,cortexLR ] # shape 59412 ~ 2*29k
+
+from brainspace.utils.parcellation import reduce_by_labels, map_to_labels
+print("Number of parcels in ctx atlas: ", len(np.unique(syt20_LR29k)))
+#Number of parcels in ctx atlas:  401
+mask = syt20_LR29k!=0; # only where the atlas is not zero
+timeseries_red = reduce_by_labels(timeseries[mask], syt20_LR29k[mask], axis=1, red_op='mean') #resutling shape: (400, 4800)
+grad=map_to_labels(timeseries_red, syt20_LR29k, mask=mask, fill=np.nan)
+```
+
+
+## surfplot (wraps around brainspace)
+
+https://surfplot.readthedocs.io/en/latest/auto_examples/plot_tutorial_04.html
+
+```python
+
+from  brainspace.plotting  import  plot_hemispheres
+from  brainspace.datasets  import  load_conte69
+surf_lh, surf_rh = load_conte69()
+
+from surfplot import Plot
+p = Plot(surf_lh, surf_rh )
+#p = Plot(lh, rh, size=(800, 200), zoom=1.2, layout='row')
+#p = Plot(lh, size=(400, 200), zoom=1.2)
+#p = Plot(lh, rh, size=(400, 200), zoom=1.2, views='lateral')
+#p = Plot(lh, rh, size=(800, 200), zoom=1.2, layout='row', mirror_views=True)
+fig = p.build()
+fig.show()
+```
+
+**add data on top**
+```py
+from brainspace.datasets import load_parcellation
+lh_parc, rh_parc = load_parcellation('schaefer')
+p.add_layer({'left': lh_parc, 'right': rh_parc}, cbar=False)
+#p.add_layer({'left': lh_parc, 'right': rh_parc}, cmap='gray', as_outline=True, cbar=False)
+```
+
+**surfaces available**
+```py
+from  brainspace.datasets  import  load_conte69
+surf_lh, surf_rh = load_conte69()
+
+from neuromaps.datasets import fetch_fslr
+surfaces = fetch_fslr() # densities of '4k', '8k', '32k', '164k'
+lh, rh = surfaces['inflated']
+
+from neuromaps.datasets import fetch_fsaverage
+surfaces = fetch_fsaverage(density='164k') # densities of {'3k', '10k', '41k', '164k'}
+lh, rh = surfaces['inflated']
+
+#more on: https://netneurolab.github.io/neuromaps/api.html#module-neuromaps.datasets
+```
+
+## netneurotools
+
+This toolbox is a collection of functions written in Python that get frequent usage in the Network Neuroscience Lab, housed in the Brain Imaging Centre at McGill University.
+
+https://github.com/netneurolab/netneurotools/
+
+https://netneurotools.readthedocs.io/en/latest/generated/netneurotools.datasets.fetch_cammoun2012.html
+
+https://github.com/netneurolab/netneurotools/blob/master/resources/generate_atl-cammoun2012_surface.py
+
+```python
+from netneurotools.datasets import *
+fetch_cammoun2012("fslr32k", data_dir=r"C:\tmp\OwnCloud\res\atlases\lausanne", verbose=0)
+```
+
+## neuromaps
+
+The neuromaps toolbox is designed to help researchers make easy, statistically-rigorous comparisons between brain maps (or brain annotations).
+
+https://github.com/netneurolab/neuromaps
+
+
+```python
+from neuromaps.datasets import available_annotations
+for annotation in available_annotations(): print(annotation)
+# ('laurikainen2018', 'fmpepd2', 'MNI152', '1mm') <source>, <description>, <space>, <resolution>
+annotation = fetch_annotation(source='neurosynth') # tags=
+```
+
+## AbaGen
+
+https://github.com/rmarkello/abagen
+
+In 2013, the Allen Institute for Brain Science released the Allen Human Brain Atlas, a dataset containing microarray expression data collected from six human brains (Hawrylycz et al., 2012). [...] The current Python package, abagen, aims to provide reproducible workflows for processing and preparing the AHBA microarray expression data for analysis.
+
+
+
+<br/><br/><br/><br/><br/><br/><br/><br/><br/>
+
+# FSaverage spaces
+
+Information taken from [this mailing list thread](https://www.mail-archive.com/freesurfer@nmr.mgh.harvard.edu/msg28867.html):
+
+> Hi Ludovico, I'm not sure exactly what your pipeline is, but you should use  fsaverage for vol2surf, then go from fsaverage to fsaverage4 or 5 with  mri_surf2surf. The reason is that if you go directly to 4 or 5, you will miss data between the vertices. The distance between the vertices for **fsaverage4 is about 5.5mm** and it is about **3mm for fsaverage5**, **1.4 for fsaverage6**, and **.7mm for fsaverage** (these are all for the white surface).
+
+So it seems as if the standard fsaverge could be considered fsaverage7.
+
+>  Which surface is "6mm" defined on? Is it .sphere, .white, or something else?
+
+> It is based on the white. Notice that since you are using an average subject (fsaverage6) there is some scaling that happens because an average subject will have a surface area that is much less than the average of the subjects that went into. The average of the subjects is kept when the average subject is created and used when the number of iterations is computed.
+
+**fsaverage4** 
+seems to have 2329 vertices in one hemisphere.
+
+**fsaverage5**
+Data are defined on a surface with 10,024 vertices (FreeSurfer **fsaverage 5**). One shows the standard averaging referred to as Mean, the averaging after Gaussian smoothing is referred to as Mean (S) (mean after Gaussian smoothing with
+
+**fsaverage164**
+
+probably corresponds to fsaverage == fsaverage7; model calculation:
+
+* fsaverge5 if it was squared would have $\sqrt(10024)$ ~ 100 vertices on each side, with between vertex distance of 3mm. Hence each side would roughly of length 100vertices x 3mm = 300mm
+* we know for fsaverage(7) the mean vertex distance is 0.7mm, that is each side of length 300mm would contain ~ 428 vertices (300mm/0.7mm/vertex). So the total number of vertices can be roughly estimated as $428^2 = 183184$ which is close to 164k
+
+
+**info from nilearn**
+‘fsaverage3’: the low-resolution fsaverage3 mesh (642 nodes)
+‘fsaverage4’: the low-resolution fsaverage4 mesh (2562 nodes)
+‘fsaverage5’: the low-resolution fsaverage5 mesh (10242 nodes)
+‘fsaverage6’: the medium-resolution fsaverage6 mesh (40962 nodes)
+‘fsaverage7’: same as ‘fsaverage’
+‘fsaverage’: the high-resolution fsaverage mesh (163842 nodes)
+https://nilearn.github.io/modules/generated/nilearn.datasets.fetch_surf_fsaverage.html#nilearn.datasets.fetch_surf_fsaverage
 
 
 ## More Conversions
@@ -489,6 +1163,16 @@ Usual File Names:
 Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors.32k_fs_LR.dlabel.nii
 
 
+## HCP MMP1 on fsaverge
+
+https://figshare.com/articles/dataset/HCP-MMP1_0_projected_on_fsaverage/3498446
+
+## HCP MMP1 in AFNI
+
+FNI will now include the Human Connectome Project brain atlas in MNI space, originally from Glasser, et al, Nature 2016. It will be available by default in AFNI's whereami output, both in the GUI and on the command line. 
+
+https://openwetware.org/wiki/Beauchamp:CorticalSurfaceHCP
+https://afni.nimh.nih.gov/pub/dist/atlases/MNI_HCP/
 
 # Useful Links:
 
@@ -506,5 +1190,8 @@ https://mvpa.blogspot.com/2018/02/connectome-workbench-making-surface.html
 ***Unofficial*** Guide to the HCP surface file formats
 https://emmarobinson01.com/2016/02/10/unofficial-guide-to-the-hcp-surface-file-formats/
 An important thing to recognise first about the HCP surface file format is that it has two versions of the atlas space: 164k_FS_LR and 32k_FS_LR. These atlases are regularly spaced and represent a left-right symmetric atlas developed  by Washu U in [3]. FS stands for FreeSurfer, and indicates the atlas is related to the FreeSurfer atlas fsaverage.
+
+**MSMAll** [high level description](https://emmarobinson01.com/2015/10/23/multimodal-surface-matching-msm-a-flexible-tool-for-aligning-generic-data-on-the-cortical-surface/)
+
 
 
